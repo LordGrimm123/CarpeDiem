@@ -276,6 +276,7 @@
     const qtyEl       = $("qty");
     const tradeMsg    = $("tradeMsg");
     const tradeBar    = $("tradeBar");
+    const autoRow     = $("autoRow");
 
     const autoPrice   = $("autoPrice");
     const autoQty     = $("autoQty");
@@ -319,7 +320,7 @@
     ];
 
     /***** PRICING: step jumps every 3s by ±1–3% *****/
-    const TICK_MS = 3000;  // <— changed from 4000 to 3000
+    const TICK_MS = 3000;  // CHANGED from 4000 to 3000
     function clamp(n){ return Math.max(1, Number.isFinite(n)? n : 0); }
     function currentPriceFor(stock){
       if (!stock) return 0;
@@ -357,12 +358,12 @@
       adminControls.classList.toggle("hidden", myRole!=="admin");
       adminOnlyHint.classList.toggle("hidden", myRole==="admin");
 
-      // SHOW/HIDE elements depending on role (without changing layout)
+      // SHOW/HIDE elements depending on role (no layout change)
       const isAdmin = (myRole==="admin");
       traderMetrics.classList.toggle("hidden", isAdmin);    // hide metrics for admin
       chartEl.classList.toggle("hidden", isAdmin);          // hide chart for admin
       tradeBar.classList.toggle("hidden", isAdmin);         // admin cannot trade here
-      $("autoRow").classList.toggle("hidden", isAdmin);     // admin doesn't need auto-sell
+      autoRow.classList.toggle("hidden", isAdmin);          // admin doesn't need auto-sell
       adminPortfolioSelect.classList.toggle("hidden", !isAdmin);
       adminPortfolioView.classList.toggle("hidden", !isAdmin);
 
@@ -373,7 +374,7 @@
       attachRealtime();
       startAnimationLoop();
       attachTraderDoc();
-      if (myRole==="admin") {
+      if (isAdmin) {
         loadRankingsLoop();
         await populateTraderDropdown(); // fill admin dropdown
       }
@@ -467,10 +468,10 @@
       detailName.textContent = s.name;
       series = [];
       tradeMsg.textContent = "";
-      // admin raise/lower enabled only when a stock is selected
       if (raiseBtn && lowerBtn){
-        raiseBtn.disabled = (myRole!=="admin");
-        lowerBtn.disabled = (myRole!=="admin");
+        const isAdmin = (myRole==="admin");
+        raiseBtn.disabled = !isAdmin;
+        lowerBtn.disabled = !isAdmin;
       }
     }
 
@@ -509,10 +510,6 @@
       });
     }
 
-    const autoRow = $("autoRow");
-    const setAutoBtn = $("setAutoBtn");
-    const clearAutoBtn = $("clearAutoBtn");
-    const autoMsg = $("autoMsg");
     setAutoBtn.addEventListener("click", async ()=>{
       autoMsg.textContent = "";
       if (!me || myRole!=="trader"){ autoMsg.textContent = "Traders only."; return; }
@@ -677,7 +674,7 @@
     async function renderAdminPortfolio(uid, label){
       const stats = await portfolioAndStats(uid);
       pfTitle.textContent = `Portfolio – ${label}`;
-      pfSummary.textContent = `Working: ₹${fmt(stats.working)} • Invested: ₹${fmt(stats.invested)} • P/L: ${stats.pl>=0?'+':''}${fmt(stats.pl)} (${fmt(stats.plPct)}%)`;
+      pfSummary.textContent = `Working: ₹${fmt(stats.working)}  •  Invested: ₹${fmt(stats.invested)}  •  P/L: ${stats.pl>=0?'+':''}${fmt(stats.pl)} (${fmt(stats.plPct)}%)`;
       pfTable.innerHTML = "";
       Object.entries(stats.data.portfolio||{}).forEach(([sid,pos])=>{
         const p = currentPriceFor(stocks[sid]);
@@ -746,4 +743,3 @@
   </script>
 </body>
 </html>
-
