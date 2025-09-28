@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carpe Diem Trading</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    .login-container, .dashboard {
+      display: none;
+      padding: 20px;
+    }
+    .active {
+      display: block;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      background-color: #4cafef;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #357abd;
+    }
+  </style>
+</head>
+<body>
+  <h1>Carpe Diem Trading</h1>
+
+  <!-- Login Section -->
+  <div id="login" class="login-container active">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Enter your email"><br>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="dashboard">
+    <h2 id="roleHeader"></h2>
+    <div id="adminPanel" style="display:none;">
+      <h3>Admin Controls</h3>
+      <p>Manage stock prices, traders, and roles here.</p>
+    </div>
+    <div id="traderPanel" style="display:none;">
+      <h3>Trader Dashboard</h3>
+      <p>Buy and sell stocks in real-time!</p>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    // ✅ Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+    // ✅ Your Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyC72GZrrjG4UIR3qzDs-I2QWIgSFd4Yehs",
+      authDomain: "carpediem-f6948.firebaseapp.com",
+      projectId: "carpediem-f6948",
+      storageBucket: "carpediem-f6948.firebasestorage.app",
+      messagingSenderId: "705608113463",
+      appId: "1:705608113463:web:eb70088734b33486c70eb2"
+    };
+
+    // 🚀 Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 🔑 Login by email lookup
+    async function login() {
+      const emailInput = document.getElementById("email").value.trim();
+
+      if (!emailInput) {
+        alert("Please enter an email.");
+        return;
+      }
+
+      // 🔎 Query roles collection for this email
+      const rolesRef = collection(db, "artifacts", "carpe_diem", "public", "data", "roles");
+      const q = query(rolesRef, where("email", "==", emailInput));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const roleData = querySnapshot.docs[0].data();
+
+        document.getElementById("login").classList.remove("active");
+        document.getElementById("dashboard").classList.add("active");
+        document.getElementById("roleHeader").innerText = `Welcome, ${roleData.role}`;
+
+        if (roleData.role === "admin") {
+          document.getElementById("adminPanel").style.display = "block";
+        } else if (roleData.role === "trader") {
+          document.getElementById("traderPanel").style.display = "block";
+        }
+      } else {
+        alert("❌ No user found with that email in roles!");
+      }
+    }
+  </script>
+</body>
+</html>
