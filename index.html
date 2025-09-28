@@ -124,8 +124,8 @@
         <button id="logoutBtn" class="btn btn-ghost">Log out</button>
       </div>
 
-      <!-- Trader metrics (only for traders; hidden for admin via JS) -->
-      <div id="traderMetrics" class="metrics" style="margin:16px 0" hidden>
+      <!-- Trader metrics (NEVER shown to admins) -->
+      <div id="traderMetrics" class="metrics hidden" style="margin:16px 0">
         <div class="metric">
           <div class="label">Working Capital</div>
           <div class="value">₹<span id="workingCap">0.00</span></div>
@@ -149,9 +149,9 @@
         <div id="stockList" class="grid grid-3"></div>
       </div>
 
-      <!-- Details + Admin/Trader column -->
+      <!-- Details + Admin column -->
       <section class="details" style="margin-top:16px">
-        <!-- Left: stock chart (trader) OR trader dropdown + portfolio (admin) -->
+        <!-- LEFT: Trader = chart+trade; Admin = portfolio viewer -->
         <div class="panel" style="padding:16px">
           <div class="row">
             <h3 id="detailName" style="margin:0">Select a stock</h3>
@@ -159,23 +159,10 @@
             <div id="detailPrice" class="muted"></div>
           </div>
 
-          <!-- Chart for traders -->
+          <!-- Trader chart -->
           <canvas id="chart" width="900" height="220"></canvas>
 
-          <!-- Admin-only: trader selector + portfolio in place of chart -->
-          <div id="adminPortfolioSelect" class="hidden" style="margin-top:8px">
-            <label class="muted" for="traderSelect">Select Trader</label>
-            <select id="traderSelect" class="input" style="max-width:260px"></select>
-          </div>
-          <div id="adminPortfolioView" class="card hidden" style="margin-top:10px">
-            <h4 id="pfTitle" style="margin:6px 0">Portfolio</h4>
-            <div class="row muted" id="pfSummary"></div>
-            <table style="margin-top:6px">
-              <thead><tr><th>Stock</th><th>Qty</th><th>Price</th><th>Value</th></tr></thead>
-              <tbody id="pfTable"></tbody>
-            </table>
-          </div>
-
+          <!-- Trader trade bar -->
           <div id="tradeBar" class="row" style="margin-top:10px">
             <label for="qty" class="muted">Qty</label>
             <input id="qty" class="input" type="number" min="1" value="1" style="width:120px" />
@@ -191,24 +178,61 @@
             <button id="clearAutoBtn" class="btn btn-ghost">Clear</button>
             <span id="autoMsg" class="muted"></span>
           </div>
+
+          <!-- Admin-only portfolio view placed here -->
+          <div id="adminPortfolioView" class="hidden">
+            <h3 style="margin:14px 0 8px 0">View Trader Portfolio</h3>
+            <div class="row" style="margin-bottom:8px">
+              <select id="traderSelect" class="input" style="max-width:420px;"></select>
+            </div>
+            <div id="portfolioWrap" class="card" style="padding:10px; display:none">
+              <h4 id="pfTitle" style="margin:6px 0">Portfolio</h4>
+              <div class="row muted" id="pfSummary"></div>
+              <table style="margin-top:6px">
+                <thead><tr><th>Stock</th><th>Qty</th><th>Price</th><th>Value</th></tr></thead>
+                <tbody id="pfTable"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        <!-- Right: Admin controls + Trader rankings -->
+        <!-- RIGHT: Admin controls + rankings -->
         <div class="panel" style="padding:16px">
           <h3 style="margin-top:0">Admin</h3>
           <div id="adminOnlyHint" class="muted">Only visible for admins</div>
 
           <div id="adminControls" class="hidden">
-            <div class="row">
+            <div class="row" style="align-items:baseline">
+              <label class="muted" style="margin-right:6px">Selected stock:</label>
+              <strong id="adminSelected" style="font-weight:800">None</strong>
+              <span class="muted" id="adminSelectedPrice" style="margin-left:6px"></span>
+            </div>
+
+            <div class="row" style="margin-top:8px">
               <label class="muted">Adjust selected stock</label>
             </div>
             <div class="row">
               <button id="raiseBtn" class="btn btn-primary">Increase 10%</button>
               <button id="lowerBtn" class="btn btn-ghost">Decrease 10%</button>
             </div>
+
+            <hr class="sep" />
+            <div class="row">
+              <label class="muted">Set starting funds for ALL traders</label>
+            </div>
+            <div class="row">
+              <input id="allFunds" class="input" type="number" min="0" placeholder="e.g. 100000" style="width:180px" />
+              <button id="applyFundsBtn" class="btn btn-primary">Apply</button>
+              <span id="fundsMsg" class="muted"></span>
+            </div>
+
+            <hr class="sep" />
+            <button id="resetBtn" class="btn btn-ghost" style="border-color:#ffc107;color:#ffc107;width:100%">
+              ⚠️ Hard RESET (All Traders + Stocks)
+            </button>
+
             <hr class="sep" />
             <h4 style="margin:6px 0">Trader Rankings</h4>
-            <div class="muted" style="margin-bottom:6px">Click a trader to view their portfolio</div>
             <div id="rankWrap" class="card" style="padding:10px; max-height:260px; overflow:auto">
               <table>
                 <thead>
@@ -276,7 +300,7 @@
     const qtyEl       = $("qty");
     const tradeMsg    = $("tradeMsg");
     const tradeBar    = $("tradeBar");
-    const autoRow     = $("autoRow");
+    const adminPortfolioView = $("adminPortfolioView");
 
     const autoPrice   = $("autoPrice");
     const autoQty     = $("autoQty");
@@ -288,15 +312,17 @@
     const adminControls = $("adminControls");
     const raiseBtn      = $("raiseBtn");
     const lowerBtn      = $("lowerBtn");
+    const allFunds      = $("allFunds");
+    const applyFundsBtn = $("applyFundsBtn");
+    const fundsMsg      = $("fundsMsg");
     const rankTable     = $("rankTable");
-
-    // Admin left panel controls
-    const adminPortfolioSelect = $("adminPortfolioSelect");
-    const adminPortfolioView   = $("adminPortfolioView");
-    const traderSelect         = $("traderSelect");
-    const pfTitle              = $("pfTitle");
-    const pfSummary            = $("pfSummary");
-    const pfTable              = $("pfTable");
+    const traderSelect  = $("traderSelect");
+    const portfolioWrap = $("portfolioWrap");
+    const pfTitle       = $("pfTitle");
+    const pfSummary     = $("pfSummary");
+    const pfTable       = $("pfTable");
+    const adminSelected = $("adminSelected");
+    const adminSelectedPrice = $("adminSelectedPrice");
 
     const buyBtn  = $("buyBtn");
     const sellBtn = $("sellBtn");
@@ -310,6 +336,7 @@
     let series = [];
     let chartCtx = $("chart").getContext("2d");
     let lastSampleTime = 0;
+    let pfUnsub = null; // realtime subscription for admin portfolio view
 
     const SEED_STOCKS = [
       "Reliance Industries","TCS","Infosys","HDFC Bank","ICICI Bank",
@@ -320,7 +347,7 @@
     ];
 
     /***** PRICING: step jumps every 3s by ±1–3% *****/
-    const TICK_MS = 3000;  // CHANGED from 4000 to 3000
+    const TICK_MS = 3000;
     function clamp(n){ return Math.max(1, Number.isFinite(n)? n : 0); }
     function currentPriceFor(stock){
       if (!stock) return 0;
@@ -330,8 +357,7 @@
     }
     function jumpOnce(stock){
       const base = Number.isFinite(stock.baseline) ? stock.baseline : (stock.defaultBaseline||500);
-      // random percent ∈ [1%, 3%] with random sign
-      const mag = 0.01 + Math.random()*0.02;
+      const mag = 0.01 + Math.random()*0.02; // 1–3%
       const sign = Math.random() < 0.5 ? -1 : 1;
       const next = base * (1 + sign*mag);
       stock.price = Math.round(next * 100) / 100;
@@ -343,46 +369,48 @@
       if(!user){ showLogin(); return; }
       me = user;
 
-      const roleDoc = await getDoc(doc(db,"artifacts",APP_ID,"public","data","roles", user.uid));
-      if (roleDoc.exists()){
-        myRole = roleDoc.data().role;
+      // role by UID first; fallback by email
+      let myRoleDoc = await getDoc(doc(db,"artifacts",APP_ID,"public","data","roles", user.uid));
+      if (myRoleDoc.exists()){
+        myRole = myRoleDoc.data().role;
       } else {
         const rolesCol = collection(db,"artifacts",APP_ID,"public","data","roles");
-        const q = query(rolesCol, where("email","==", user.email));
-        const snap = await getDocs(q);
+        const qEmail = query(rolesCol, where("email","==", user.email));
+        const snap = await getDocs(qEmail);
         myRole = (!snap.empty) ? (snap.docs[0].data().role) : null;
       }
       if(!myRole){ showLogin("Role not found. Create /roles/<UID> with {email, role}."); return; }
 
       roleHeader.textContent = `Welcome, ${myRole}`;
+
+      // ✅ Trader metrics are 100% hidden for admins
+      if (myRole === "admin"){
+        traderMetrics.classList.add("hidden");
+      } else {
+        traderMetrics.classList.remove("hidden");
+      }
+
       adminControls.classList.toggle("hidden", myRole!=="admin");
       adminOnlyHint.classList.toggle("hidden", myRole==="admin");
 
-      // SHOW/HIDE elements depending on role (no layout change)
-      const isAdmin = (myRole==="admin");
-      traderMetrics.classList.toggle("hidden", isAdmin);    // hide metrics for admin
-      chartEl.classList.toggle("hidden", isAdmin);          // hide chart for admin
-      tradeBar.classList.toggle("hidden", isAdmin);         // admin cannot trade here
-      autoRow.classList.toggle("hidden", isAdmin);          // admin doesn't need auto-sell
-      adminPortfolioSelect.classList.toggle("hidden", !isAdmin);
+      // Trader vs Admin view for the left panel
+      const isAdmin = myRole === "admin";
+      chartEl.classList.toggle("hidden", isAdmin);
+      tradeBar.classList.toggle("hidden", isAdmin);
+      $("autoRow").classList.toggle("hidden", isAdmin);
       adminPortfolioView.classList.toggle("hidden", !isAdmin);
 
       loginSection.classList.add("hidden");
       dashboard.classList.remove("hidden");
 
       await bootstrapStocks();
-      attachRealtime();
+      attachRealtime();              // realtime stocks for ALL users
       startAnimationLoop();
-      attachTraderDoc();
-      if (isAdmin) {
-        loadRankingsLoop();
-        await populateTraderDropdown(); // fill admin dropdown
-      }
+      attachTraderDoc();             // realtime SELF trader doc
+      if (isAdmin) { loadRankingsLoop(); fillTraderDropdown(); }
 
-      // start global jump timer
-      setInterval(()=> {
-        Object.values(stocks).forEach(s => jumpOnce(s));
-      }, TICK_MS);
+      // global jump timer (purely local animation)
+      setInterval(()=> { Object.values(stocks).forEach(s => jumpOnce(s)); }, TICK_MS);
     });
 
     function showLogin(msg){
@@ -410,19 +438,19 @@
 
     /***** Stocks *****/
     function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"_"); }
+
     async function bootstrapStocks(){
       SEED_STOCKS.forEach((name)=>{
         const id = slug(name);
         if (!stocks[id]) stocks[id] = { id, name, defaultBaseline: +(300 + Math.random()*900).toFixed(2) };
       });
-
       const col = collection(db,"artifacts",APP_ID,"public","data","stocks");
       const snap = await getDocs(col);
       if (snap.empty && myRole==="admin"){
         for(const name of SEED_STOCKS){
           const id = slug(name);
           const base = +(stocks[id]?.defaultBaseline || (300+Math.random()*900)).toFixed(2);
-          await setDoc(doc(col,id), { name, baseline: base, baselineVer: Date.now() });
+          await setDoc(doc(col,id), { name, baseline: base });
         }
       }
     }
@@ -435,7 +463,13 @@
           const id = d.id;
           const prev = stocks[id] || {};
           const base = Number(data.baseline);
-          const priceInit = Number.isFinite(prev.price) ? prev.price : (Number.isFinite(base) ? base : prev.defaultBaseline);
+
+          // If baseline changed, force visible price to jump to new baseline (so ALL clients sync immediately)
+          const baselineChanged = Number.isFinite(prev.baseline) && Number.isFinite(base) && base !== prev.baseline;
+          const priceInit = baselineChanged
+              ? base
+              : (Number.isFinite(prev.price) ? prev.price : (Number.isFinite(base) ? base : prev.defaultBaseline));
+
           stocks[id] = {
             id,
             name: data.name || prev.name || id,
@@ -468,14 +502,13 @@
       detailName.textContent = s.name;
       series = [];
       tradeMsg.textContent = "";
-      if (raiseBtn && lowerBtn){
-        const isAdmin = (myRole==="admin");
-        raiseBtn.disabled = !isAdmin;
-        lowerBtn.disabled = !isAdmin;
-      }
+      // show in admin which stock is selected
+      adminSelected.textContent = s.name || "None";
+      adminSelectedPrice.textContent = `• ₹ ${fmt(currentPriceFor(s))}`;
+      raiseBtn.disabled = lowerBtn.disabled = (myRole!=="admin");
     }
 
-    // Admin ±10% baseline
+    // Admin ±10% (writes baseline; all clients snap to it in onSnapshot)
     raiseBtn?.addEventListener("click", ()=> adjustSelected( 0.10));
     lowerBtn?.addEventListener("click", ()=> adjustSelected(-0.10));
     async function adjustSelected(delta){
@@ -484,19 +517,36 @@
       const ref = doc(db,"artifacts",APP_ID,"public","data","stocks", selectedId);
       const base = Number.isFinite(s.baseline) ? s.baseline : (s.defaultBaseline||500);
       const newBase = +(base * (1+delta)).toFixed(2);
-
-      // optimistic local update
+      // Optimistic local UI
       s.baseline = newBase;
-      s.price = newBase; // snap price for clarity
+      s.price = newBase;
       stocks[selectedId] = s;
-
+      adminSelectedPrice.textContent = `• ₹ ${fmt(newBase)}`;
       try{
-        await updateDoc(ref, { baseline:newBase, baselineVer: Date.now() });
+        await updateDoc(ref, { baseline:newBase });
       }catch(e){ console.error(e); }
     }
 
     /***** Trader doc + Auto-sell *****/
     function traderRef(uid){ return doc(db,"artifacts",APP_ID,"public","data","traders", uid); }
+
+    function updateTraderMetrics(){
+      if (!myTrader) return;
+      const cash = +myTrader.cash || 0;
+      const invested = Object.entries(myTrader.portfolio || {}).reduce((sum,[sid,pos])=>{
+        const st=stocks[sid];
+        if(st) sum += (pos.quantity||0)*currentPriceFor(st);
+        return sum;
+      },0);
+      const initial = +myTrader.initialCash || 0;
+      const pl = (cash + invested) - initial;
+      const plPct = initial ? (pl/initial*100) : 0;
+
+      workingCapEl.textContent = fmt(cash);
+      investedCapEl.textContent = fmt(invested);
+      profitLossEl.style.color = pl>=0 ? "var(--good)" : "var(--bad)";
+      profitLossEl.textContent = `${pl>=0?'+':''}${fmt(plPct)}%`;
+    }
 
     async function attachTraderDoc(){
       if (!me) return;
@@ -507,6 +557,10 @@
       }
       onSnapshot(ref, snap=>{
         myTrader = snap.exists()? snap.data() : { cash:0, initialCash:0, portfolio:{}, autos:{} };
+        if (myRole === "trader") {
+          traderMetrics.classList.remove("hidden");
+          updateTraderMetrics();
+        }
       });
     }
 
@@ -561,7 +615,7 @@
       }
     }
 
-    /***** Trader metrics *****/
+    /***** Trader helpers & actions *****/
     async function portfolioAndStats(uid){
       const s = await getDoc(traderRef(uid));
       const data = s.exists()? s.data(): { cash:0, initialCash:0, portfolio:{} };
@@ -575,16 +629,6 @@
       const pl = (working + invested) - initial;
       const plPct = initial ? (pl/initial*100) : 0;
       return { working, invested, pl, plPct, data };
-    }
-
-    async function refreshMetrics(){
-      if (myRole!=="trader" || !me) return;
-      const { working, invested, pl, plPct } = await portfolioAndStats(me.uid);
-      setText(workingCapEl, fmt(working));
-      setText(investedCapEl, fmt(invested));
-      const sign = pl>=0 ? "+" : "";
-      profitLossEl.style.color = pl>=0 ? "var(--good)" : "var(--bad)";
-      profitLossEl.textContent = `${sign}${fmt(pl)} (${fmt(plPct)}%)`;
     }
 
     buyBtn.addEventListener("click", ()=> trade("buy"));
@@ -615,14 +659,55 @@
 
       await setDoc(ref, t, { merge:true });
       tradeMsg.textContent = kind==="buy" ? `Bought ${q}` : `Sold ${q}`;
-      refreshMetrics();
+      if (myRole==="trader") updateTraderMetrics();
     }
 
-    /***** Admin: Rankings & Portfolios *****/
+    /***** Admin: Funds, Reset, Rankings, Trader dropdown (REALTIME portfolio) *****/
+    applyFundsBtn.addEventListener("click", async ()=>{
+      if(myRole!=="admin")return;
+      const amt=parseFloat(allFunds.value);
+      if(!Number.isFinite(amt)||amt<=0){fundsMsg.textContent="Enter a valid amount.";return;}
+      // iterate roles so even traders who never logged in yet get a doc
+      const rolesCol=collection(db,"artifacts",APP_ID,"public","data","roles");
+      const rSnap=await getDocs(rolesCol);
+      for(const d of rSnap.docs){
+        if(d.data().role==="trader"){
+          await setDoc(traderRef(d.id),{cash:amt,initialCash:amt,portfolio:{},autos:{}},{merge:true});
+        }
+      }
+      fundsMsg.textContent="Updated for all traders.";
+    });
+
+    const resetBtn = $("resetBtn");
+    resetBtn.addEventListener("click", async ()=>{
+      if(myRole!=="admin")return;
+      if(!confirm("This will reset ALL traders and ALL stocks. Continue?")) return;
+
+      // Reset traders (use roles to include everyone)
+      const rolesCol=collection(db,"artifacts",APP_ID,"public","data","roles");
+      const rSnap=await getDocs(rolesCol);
+      for(const d of rSnap.docs){
+        if(d.data().role==="trader"){
+          await setDoc(traderRef(d.id),{cash:100000,initialCash:100000,portfolio:{},autos:{}},{merge:true});
+        }
+      }
+
+      // Reset stocks to fresh random baselines
+      const stocksCol=collection(db,"artifacts",APP_ID,"public","data","stocks");
+      const sSnap=await getDocs(stocksCol);
+      for(const d of sSnap.docs){
+        const newBase=+(300+Math.random()*900).toFixed(2);
+        await updateDoc(d.ref,{baseline:newBase});
+      }
+      alert("System RESET complete.");
+    });
+
     async function loadRankings(){
       const rolesCol = collection(db,"artifacts",APP_ID,"public","data","roles");
       const rSnap = await getDocs(rolesCol);
-      const traders = rSnap.docs.filter(d=> (d.data().role==="trader")).map(d=>({ uid:d.id, email:d.data().email||d.id }));
+      const traders = rSnap.docs
+        .filter(d=> (d.data().role==="trader"))
+        .map(d=>({ uid:d.id, email:d.data().email||d.id }));
 
       const rows = [];
       for (const tr of traders){
@@ -635,60 +720,65 @@
       rankTable.innerHTML = "";
       rows.forEach((r,i)=>{
         const tr = document.createElement("tr"); tr.className="data";
-        tr.innerHTML = `<td>${i+1}</td><td><button class="btn btn-ghost" data-uid="${r.uid}" style="padding:6px 10px">${r.email}</button></td><td>₹ ${fmt(r.total)}</td><td style="color:${r.pl>=0?'var(--good)':'var(--bad)'}">${r.pl>=0?'+':''}${fmt(r.pl)}</td>`;
+        tr.innerHTML = `<td>${i+1}</td><td>${r.email}</td><td>₹ ${fmt(r.total)}</td><td style="color:${r.pl>=0?'var(--good)':'var(--bad)'}">${r.pl>=0?'+':''}${fmt(r.pl)}</td>`;
         rankTable.appendChild(tr);
-      });
-
-      rankTable.querySelectorAll("button[data-uid]").forEach(btn=>{
-        btn.addEventListener("click", async ()=>{
-          const uid = btn.getAttribute("data-uid");
-          renderAdminPortfolio(uid, btn.textContent);
-        });
       });
     }
     function loadRankingsLoop(){ loadRankings(); setInterval(loadRankings, 6000); }
 
-    // Populate admin dropdown with traders
-    async function populateTraderDropdown(){
-      traderSelect.innerHTML = "";
+    async function fillTraderDropdown(){
       const rolesCol = collection(db,"artifacts",APP_ID,"public","data","roles");
       const rSnap = await getDocs(rolesCol);
-      const traders = rSnap.docs
-        .filter(d=> (d.data().role==="trader"))
-        .map(d=>({ uid:d.id, email:d.data().email || d.id }));
-      traders.forEach(t=>{
-        const opt = document.createElement("option");
-        opt.value = t.uid; opt.textContent = t.email;
+      const traders = rSnap.docs.filter(d=> d.data().role==="trader");
+      traderSelect.innerHTML = "";
+      traders.forEach(d=>{
+        const opt=document.createElement("option");
+        opt.value=d.id; opt.textContent=d.data().email || d.id;
         traderSelect.appendChild(opt);
       });
-      if (traders.length){
-        renderAdminPortfolio(traders[0].uid, traders[0].email);
+      if (traderSelect.options.length) {
+        traderSelect.selectedIndex = 0;
+        subscribeTraderPortfolio(traderSelect.value); // realtime
       }
-      traderSelect.addEventListener("change", ()=>{
-        const uid = traderSelect.value;
-        const label = traderSelect.options[traderSelect.selectedIndex]?.textContent || uid;
-        renderAdminPortfolio(uid, label);
+    }
+
+    traderSelect?.addEventListener("change", ()=>{
+      subscribeTraderPortfolio(traderSelect.value);
+    });
+
+    function subscribeTraderPortfolio(uid){
+      if (pfUnsub) { pfUnsub(); pfUnsub = null; }
+      if (!uid){ portfolioWrap.style.display="none"; return; }
+      pfUnsub = onSnapshot(traderRef(uid), async (snap)=>{
+        if (!snap.exists()){ portfolioWrap.style.display="none"; return; }
+        const data = snap.data();
+        // recompute with live prices
+        const working = +data.cash || 0;
+        let invested = 0;
+        Object.entries(data.portfolio||{}).forEach(([sid,pos])=>{
+          const st = stocks[sid]; if (!st) return;
+          invested += (pos.quantity||0)*currentPriceFor(st);
+        });
+        const initial = +data.initialCash || 0;
+        const pl = (working+invested)-initial;
+        const plPct = initial? (pl/initial*100) : 0;
+
+        pfTitle.textContent = `Portfolio – ${traderSelect.selectedOptions[0].textContent}`;
+        pfSummary.textContent = `Working: ₹${fmt(working)}  •  Invested: ₹${fmt(invested)}  •  P/L: ${pl>=0?'+':''}${fmt(pl)} (${fmt(plPct)}%)`;
+        pfTable.innerHTML = "";
+        Object.entries(data.portfolio||{}).forEach(([sid,pos])=>{
+          const p = currentPriceFor(stocks[sid]);
+          const val = p * (pos.quantity||0);
+          const tr = document.createElement("tr"); tr.className="data";
+          tr.innerHTML = `<td>${stocks[sid]?.name||sid}</td><td>${pos.quantity||0}</td><td>₹ ${fmt(p)}</td><td>₹ ${fmt(val)}</td>`;
+          pfTable.appendChild(tr);
+        });
+        portfolioWrap.style.display = "block";
       });
     }
 
-    async function renderAdminPortfolio(uid, label){
-      const stats = await portfolioAndStats(uid);
-      pfTitle.textContent = `Portfolio – ${label}`;
-      pfSummary.textContent = `Working: ₹${fmt(stats.working)}  •  Invested: ₹${fmt(stats.invested)}  •  P/L: ${stats.pl>=0?'+':''}${fmt(stats.pl)} (${fmt(stats.plPct)}%)`;
-      pfTable.innerHTML = "";
-      Object.entries(stats.data.portfolio||{}).forEach(([sid,pos])=>{
-        const p = currentPriceFor(stocks[sid]);
-        const val = p * (pos.quantity||0);
-        const tr = document.createElement("tr"); tr.className="data";
-        tr.innerHTML = `<td>${stocks[sid]?.name||sid}</td><td>${pos.quantity||0}</td><td>₹ ${fmt(p)}</td><td>₹ ${fmt(val)}</td>`;
-        pfTable.appendChild(tr);
-      });
-      adminPortfolioView.classList.remove("hidden");
-    }
-
-    /***** Animation: update tiles/price text, stream chart, autos, metrics *****/
+    /***** Animation: tiles/price text, chart, autos, metrics *****/
     function fmt(n){ return (+n).toLocaleString("en-IN",{maximumFractionDigits:2,minimumFractionDigits:2}); }
-    function setText(el, val){ if(el) el.textContent = val; }
 
     function drawChart(){
       const w = chartEl.width, h = chartEl.height;
@@ -703,8 +793,8 @@
         const norm = (v - min) / (max - min);
         const barH = Math.max(2, Math.round(norm * (h - 8)));
         const x = i * xStep;
-        chartCtx.fillStyle = i>0 && v>=series[i-1] ? "#3ddc97" : "#ff6b6b";
-        chartCtx.fillRect(x, h - barH, xStep-1, barH);
+        ctx.fillStyle = i>0 && v>=series[i-1] ? "#3ddc97" : "#ff6b6b";
+        ctx.fillRect(x, h - barH, xStep-1, barH);
       }
     }
 
@@ -714,17 +804,16 @@
         if (now - last > 100){
           last = now;
 
-          // Update tiles
           Object.values(stocks).forEach(s=>{
             const el = document.getElementById(`p-${s.id}`);
             if (el) el.textContent = fmt(currentPriceFor(s));
           });
 
-          // Selected stock details & streaming chart (only show chart for traders)
           if (selectedId && stocks[selectedId]){
             const p = currentPriceFor(stocks[selectedId]);
             detailPrice.textContent = `₹ ${fmt(p)}`;
-            if (myRole==="trader" && !chartEl.classList.contains("hidden")){
+            adminSelectedPrice.textContent = (myRole==="admin") ? `• ₹ ${fmt(p)}` : adminSelectedPrice.textContent;
+            if (!chartEl.classList.contains("hidden")) {
               if (now - lastSampleTime > 200){
                 lastSampleTime = now;
                 series.push(p);
@@ -734,7 +823,7 @@
             }
           }
 
-          if (myRole==="trader"){ refreshMetrics(); checkAutoSells(); }
+          if (myRole==="trader"){ updateTraderMetrics(); checkAutoSells(); }
         }
         requestAnimationFrame(tick);
       }
