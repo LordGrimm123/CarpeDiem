@@ -6,162 +6,194 @@
   <title>Carpe Diem – Stock Simulator</title>
   <style>
     :root{
-      --bg:#0b132b; --panel:#14213d; --card:#1b294a;
-      --accent:#4cafef; --accent-2:#357abd;
-      --text:#ffffff; --muted:#eef4ff; --muted-2:#d7e3ff;
-      --good:#3ddc97; --bad:#ff6b6b; --border:#ffffff33;
+      --bg:#0b132b;
+      --panel:#14213d;
+      --card:#1b294a;
+      --accent:#4cafef;
+      --accent-2:#357abd;
+      --text:#ffffff;
+      --muted:#eef4ff;
+      --muted-2:#d7e3ff;
+      --good:#3ddc97;
+      --bad:#ff6b6b;
+      --border:#ffffff33;
     }
-    body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
-    header{background:linear-gradient(90deg,#0e1a34,#18335f);padding:14px;text-align:center;font-weight:800}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
+      background:var(--bg);color:var(--text);}
+    header{background:linear-gradient(90deg,#0e1a34,#18335f);padding:14px 16px;text-align:center;
+      font-weight:800;letter-spacing:.3px;box-shadow:0 2px 14px #0008;}
     .wrap{max-width:1160px;margin:24px auto;padding:0 16px}
-    .hidden{display:none!important}
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
-    .btn{padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700;border:1px solid transparent}
+    .hidden{display:none !important}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 24px #0006;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 18px #0005;}
+    .btn{display:inline-flex;align-items:center;justify-content:center;
+      padding:10px 14px;border-radius:10px;border:1px solid transparent;font-weight:700;cursor:pointer;transition:.18s ease;}
     .btn-primary{background:var(--accent);color:#041426}
     .btn-primary:hover{background:var(--accent-2)}
-    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+    .btn-ghost{background:transparent;border-color:var(--border);color:var(--text)}
     .btn-ghost:hover{background:#ffffff14}
+    /* Login */
+    .login-shell{min-height:70vh;display:grid;place-items:center;}
+    .login-box{width:min(480px,100%);padding:28px}
+    .input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:#0e1a34;color:#fff;}
+    .input::placeholder{color:#f0f5ff}
+    label{font-size:.9rem;color:var(--muted);margin-bottom:6px;display:inline-block}
+    /* Grid */
     .grid{display:grid;gap:16px}
     .grid-3{grid-template-columns:repeat(3,1fr)}
-    .tile{padding:12px;border-radius:12px;border:1px solid var(--border);background:#0f1c37;cursor:pointer}
-    .tile .name{font-weight:800}
-    .tile .price{margin-top:2px;font-weight:800}
+    @media(max-width:960px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){.grid-3{grid-template-columns:1fr}}
+    /* Stock tiles */
+    .tile{padding:12px;border-radius:12px;border:1px solid var(--border);background:#0f1c37;cursor:pointer;
+      transition:transform .12s ease,border-color .12s ease;}
+    .tile:hover{transform:translateY(-1px);border-color:#ffffff55}
+    .tile .name{font-weight:800;color:#fff}
+    .tile .price{color:#fff;margin-top:2px;font-weight:800}
+    /* Details */
+    .details{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    @media(max-width:900px){.details{grid-template-columns:1fr}}
     canvas{width:100%;height:220px;background:#0b1730;border:1px solid var(--border);border-radius:12px}
-    table{width:100%;border-collapse:collapse;margin-top:8px}
-    th,td{padding:8px 10px;text-align:left}
-    th{color:var(--muted-2);border-bottom:1px solid var(--border)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .spacer{flex:1}
+    .muted{color:var(--muted)}
+    hr.sep{border:none;height:1px;background:var(--border);margin:10px 0}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{text-align:left;padding:8px 10px;color:#fff}
+    th{color:#e9f1ff;font-weight:800;border-bottom:1px solid var(--border)}
     tr.data{background:#0f1c37;border:1px solid var(--border)}
+    tr.data td{border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+    small.err{color:#ffd0d0}
   </style>
 </head>
 <body>
-  <header>Carpe Diem – Stock Simulator</header>
-  <main class="wrap">
-    <!-- LOGIN -->
-    <section id="loginSection" class="panel">
-      <form id="loginForm">
-        <h2>Sign in</h2>
-        <input id="email" type="email" placeholder="Email" required class="card"/><br><br>
-        <input id="password" type="password" placeholder="Password" required class="card"/><br><br>
-        <button id="loginBtn" class="btn btn-primary">Log in</button>
-        <span id="loginError"></span>
-      </form>
-    </section>
+<header>Carpe Diem – Stock Simulator</header>
 
-    <!-- DASHBOARD -->
-    <section id="dashboard" class="hidden">
-      <div class="panel">
-        <strong id="roleHeader"></strong>
-        <button id="logoutBtn" class="btn btn-ghost" style="float:right">Log out</button>
+<main class="wrap">
+  <!-- LOGIN -->
+  <section id="loginSection" class="panel login-shell">
+    <form id="loginForm" class="login-box card">
+      <h2 style="margin:0 0 14px 0">Sign in</h2>
+      <div class="grid">
+        <div><label for="email">Email</label>
+          <input id="email" type="email" class="input" placeholder="name@gsis.ac.in" required /></div>
+        <div><label for="password">Password</label>
+          <input id="password" type="password" class="input" placeholder="••••••••" required /></div>
+        <div class="row" style="margin-top:4px">
+          <button id="loginBtn" class="btn btn-primary" type="submit">Log in</button>
+          <span id="loginError" class="muted" style="margin-left:8px"></span>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="hidden">
+    <div class="panel" style="padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <strong id="roleHeader">Welcome</strong>
+      <span class="spacer"></span>
+      <button id="logoutBtn" class="btn btn-ghost">Log out</button>
+    </div>
+
+    <!-- Trader metrics (only for traders, hidden for admin) -->
+    <div id="traderMetrics" class="metrics" style="margin:16px 0" hidden>
+      <div class="metric"><div class="label">Working Capital</div>
+        <div class="value">₹<span id="workingCap">0.00</span></div></div>
+      <div class="metric"><div class="label">Invested Capital</div>
+        <div class="value">₹<span id="investedCap">0.00</span></div></div>
+      <div class="metric"><div class="label">Profit / Loss</div>
+        <div class="value" id="profitLoss">0.00%</div></div>
+    </div>
+
+    <!-- Stocks -->
+    <div class="panel" style="padding:16px">
+      <div class="row" style="margin-bottom:10px"><h3 style="margin:0">Stocks</h3><span class="spacer"></span></div>
+      <div id="stockList" class="grid grid-3"></div>
+    </div>
+
+    <!-- Details + Admin/Trader column -->
+    <section class="details" style="margin-top:16px">
+      <!-- Left -->
+      <div class="panel" style="padding:16px" id="leftPanel">
+        <div class="row">
+          <h3 id="detailName" style="margin:0">Select a stock</h3>
+          <span class="spacer"></span>
+          <div id="detailPrice" class="muted"></div>
+        </div>
+        <!-- Trader sees chart -->
+        <canvas id="chart" width="900" height="220"></canvas>
+        <!-- Admin sees trader dropdown instead of chart -->
+        <div id="adminPortfolioSelect" class="hidden" style="margin:12px 0">
+          <label class="muted">Select Trader:</label>
+          <select id="traderSelect" class="input" style="width:200px"></select>
+        </div>
+        <div id="tradeBar" class="row" style="margin-top:10px">
+          <label for="qty" class="muted">Qty</label>
+          <input id="qty" class="input" type="number" min="1" value="1" style="width:120px" />
+          <button id="buyBtn" class="btn btn-primary">Buy</button>
+          <button id="sellBtn" class="btn btn-ghost">Sell</button>
+          <span id="tradeMsg" class="muted"></span>
+        </div>
+        <div id="autoRow" class="row" style="margin-top:10px">
+          <label for="autoPrice" class="muted">Auto-sell at price</label>
+          <input id="autoPrice" class="input" type="number" min="0" placeholder="e.g. 1200" style="width:160px" />
+          <input id="autoQty" class="input" type="number" min="1" placeholder="qty" style="width:120px" />
+          <button id="setAutoBtn" class="btn btn-primary">Set Auto-Sell</button>
+          <button id="clearAutoBtn" class="btn btn-ghost">Clear</button>
+          <span id="autoMsg" class="muted"></span>
+        </div>
+        <div id="adminPortfolioView" class="hidden" style="margin-top:14px"></div>
       </div>
 
-      <!-- TRADER metrics (only trader sees) -->
-      <div id="traderMetrics" class="panel hidden">
-        <div>Working Capital: ₹<span id="workingCap">0.00</span></div>
-        <div>Invested Capital: ₹<span id="investedCap">0.00</span></div>
-        <div>Profit/Loss: <span id="profitLoss">0%</span></div>
-      </div>
-
-      <!-- STOCK LIST -->
-      <div class="panel">
-        <h3>Stocks</h3>
-        <div id="stockList" class="grid grid-3"></div>
-      </div>
-
-      <!-- DETAILS -->
-      <section class="panel">
-        <!-- Trader View -->
-        <div id="traderView">
-          <h3 id="detailName">Select a stock</h3>
-          <div id="detailPrice"></div>
-          <canvas id="chart"></canvas>
-          <div>
-            <input id="qty" type="number" min="1" value="1"/>
-            <button id="buyBtn" class="btn btn-primary">Buy</button>
-            <button id="sellBtn" class="btn btn-ghost">Sell</button>
+      <!-- Right: Admin controls -->
+      <div class="panel" style="padding:16px">
+        <h3 style="margin-top:0">Admin</h3>
+        <div id="adminOnlyHint" class="muted">Only visible for admins</div>
+        <div id="adminControls" class="hidden">
+          <div class="row"><label class="muted">Adjust selected stock</label></div>
+          <div class="row">
+            <button id="raiseBtn" class="btn btn-primary">Increase 10%</button>
+            <button id="lowerBtn" class="btn btn-ghost">Decrease 10%</button>
+          </div>
+          <hr class="sep"/>
+          <div class="row"><label class="muted">Set starting funds for ALL traders</label></div>
+          <div class="row">
+            <input id="allFunds" class="input" type="number" min="0" placeholder="e.g. 100000" style="width:180px" />
+            <button id="applyFundsBtn" class="btn btn-primary">Apply</button>
+            <span id="fundsMsg" class="muted"></span>
+          </div>
+          <hr class="sep"/>
+          <h4 style="margin:6px 0">Trader Rankings</h4>
+          <div class="muted" style="margin-bottom:6px">Click a trader to view their portfolio</div>
+          <div id="rankWrap" class="card" style="padding:10px;max-height:260px;overflow:auto">
+            <table><thead><tr><th>#</th><th>Trader</th><th>Total Equity</th><th>P/L</th></tr></thead>
+              <tbody id="rankTable"></tbody></table>
           </div>
         </div>
-
-        <!-- Admin View -->
-        <div id="adminView" class="hidden">
-          <h3>Admin Controls</h3>
-          <button id="raiseBtn" class="btn btn-primary">Increase 10%</button>
-          <button id="lowerBtn" class="btn btn-ghost">Decrease 10%</button>
-          <hr>
-          <h4>Trader Portfolio Viewer</h4>
-          <select id="traderSelect"></select>
-          <div id="portfolioWrap" class="card hidden">
-            <h4 id="pfTitle"></h4>
-            <table>
-              <thead><tr><th>Stock</th><th>Qty</th><th>Value</th></tr></thead>
-              <tbody id="pfTable"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      </div>
     </section>
-  </main>
+  </section>
+</main>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, updateDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyC72GZrrjG4UIR3qzDs-I2QWIgSFd4Yehs",
-      authDomain: "carpediem-f6948.firebaseapp.com",
-      projectId: "carpediem-f6948",
-      storageBucket: "carpediem-f6948.firebasestorage.app",
-      messagingSenderId: "705608113463",
-      appId: "1:705608113463:web:eb70088734b33486c70eb2"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const TICK_MS = 3000;
-    const STOCKS = ["Reliance","TCS","Infosys","HDFC","ICICI","SBI"];
-    let stocks = {};
-
-    function jumpPrice(stock){
-      const base = stock.price||500;
-      const change = (1+(Math.random()*0.02+0.01)*(Math.random()<0.5?-1:1));
-      stock.price = +(base*change).toFixed(2);
-    }
-
-    setInterval(()=>{ 
-      STOCKS.forEach(n=>{
-        if(!stocks[n]) stocks[n]={name:n,price:500+Math.random()*500};
-        jumpPrice(stocks[n]);
-        document.getElementById("p-"+n).textContent = stocks[n].price;
-      });
-    },TICK_MS);
-
-    // UI rendering
-    const stockList=document.getElementById("stockList");
-    STOCKS.forEach(n=>{
-      const div=document.createElement("div");
-      div.className="tile";
-      div.innerHTML=`<div class="name">${n}</div><div class="price">₹ <span id="p-${n}">--</span></div>`;
-      stockList.appendChild(div);
-    });
-
-    // Auth
-    onAuthStateChanged(auth,user=>{
-      if(user){
-        document.getElementById("loginSection").classList.add("hidden");
-        document.getElementById("dashboard").classList.remove("hidden");
-      } else {
-        document.getElementById("dashboard").classList.add("hidden");
-        document.getElementById("loginSection").classList.remove("hidden");
-      }
-    });
-    document.getElementById("loginForm").addEventListener("submit",async e=>{
-      e.preventDefault();
-      await signInWithEmailAndPassword(auth,document.getElementById("email").value,document.getElementById("password").value);
-    });
-    document.getElementById("logoutBtn").addEventListener("click",()=>signOut(auth));
-  </script>
+<script type="module">
+/* … keep your Firebase + logic … */
+/* Just change: */
+const TICK_MS = 3000; // price changes every 3s
+onAuthStateChanged(auth, async(user)=>{
+  /* … existing role detection … */
+  if(myRole==="admin"){
+    document.getElementById("chart").classList.add("hidden");
+    document.getElementById("tradeBar").classList.add("hidden");
+    document.getElementById("autoRow").classList.add("hidden");
+    document.getElementById("adminPortfolioSelect").classList.remove("hidden");
+    document.getElementById("adminPortfolioView").classList.remove("hidden");
+    document.getElementById("traderMetrics").classList.add("hidden");
+  }
+});
+/* You would then add code to populate #traderSelect with traders from Firestore 
+   and render their portfolio in #adminPortfolioView when selected. */
+</script>
 </body>
 </html>
+>
