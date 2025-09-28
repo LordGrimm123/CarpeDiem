@@ -4,30 +4,46 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Carpe Diem Trading Simulator</title>
+  <!-- Tailwind for quick, clean layout -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root { --bg:#03045E; --panel:#0077B6; --card:#0096C7; --accent:#00B4D8; --muted:#90E0EF; }
-    body{background:var(--bg); color:#E8F1F2; min-height:100vh}
-    .card{background:var(--card)}
-    .btn{display:inline-flex; align-items:center; justify-content:center; padding:.6rem 1rem; border-radius:.6rem}
-    .btn-primary{background:var(--accent); color:#001219}
-    .btn-primary:hover{background:var(--muted)}
+    :root{
+      /* Royal palette */
+      --royal-navy:#0b132b;    /* page background */
+      --royal-blue:#1f3c88;    /* panels */
+      --sapphire:#243b82;      /* cards */
+      --indigo:#142b6f;        /* widgets */
+      --gold:#f0c808;          /* accents */
+      --silver:#e6eef7;        /* text */
+      --muted:#9fb3c8;         /* subtle text */
+    }
+    html,body{height:100%}
+    body{background:var(--royal-navy); color:var(--silver)}
+    .panel{background:linear-gradient(180deg, var(--royal-blue), var(--indigo));}
+    .card{background:linear-gradient(180deg, var(--sapphire), var(--indigo));}
+    .btn{display:inline-flex;align-items:center;justify-content:center;padding:.65rem 1rem;border-radius:.65rem;font-weight:600}
+    .btn-primary{background:var(--gold); color:#111827}
+    .btn-primary:hover{filter:brightness(1.05)}
     .btn-ghost{border:1px solid #ffffff22}
-    .bar-graph-container{display:flex; align-items:flex-end; height:160px; overflow-x:auto; border:1px solid #ffffff22; border-radius:.5rem; padding:.25rem}
-    .bar{width:.75rem; min-width:.75rem; margin:0 2px}
+    .stock-tile{background:rgba(255,255,255,.05);border:1px solid #ffffff14;border-radius:.75rem;padding:.75rem}
+    .stock-tile:hover{border-color:#ffffff33;transform:translateY(-1px)}
+    .metric{background:rgba(255,255,255,.06);border:1px solid #ffffff14}
+    .metric h4{font-size:.8rem;letter-spacing:.02em;color:var(--muted)}
+    .bar-graph{height:160px;display:flex;align-items:flex-end;gap:3px;overflow-x:auto;border:1px solid #ffffff22;border-radius:.5rem;padding:.25rem}
+    .bar{width:.7rem;min-width:.7rem}
   </style>
 </head>
-<body class="flex items-start justify-center p-4">
-  <div class="w-full max-w-6xl">
+<body class="min-h-full">
+  <main class="max-w-7xl mx-auto p-4 md:p-6">
     <!-- LOADING -->
-    <div id="loading" class="bg-[var(--panel)] rounded-xl p-6 text-center">
-      <h1 class="text-3xl font-bold">Loading…</h1>
-      <p id="loading-msg" class="opacity-80 mt-2">Initializing Firebase and fetching data…</p>
-    </div>
+    <section id="loading" class="panel rounded-2xl p-6 text-center shadow-xl">
+      <h1 class="text-3xl font-extrabold tracking-tight">Loading…</h1>
+      <p id="loading-msg" class="opacity-90 mt-2">Initializing Firebase and fetching data…</p>
+    </section>
 
     <!-- LOGIN -->
     <section id="login" class="hidden">
-      <div class="bg-[var(--panel)] rounded-xl p-6">
+      <div class="panel rounded-2xl p-6 shadow-xl">
         <h2 class="text-3xl font-bold mb-4">Sign in</h2>
         <form id="login-form" class="grid sm:grid-cols-2 gap-4">
           <div>
@@ -38,15 +54,14 @@
             <label class="block text-sm mb-1">Password</label>
             <input id="password" type="password" class="w-full rounded-lg p-2 text-gray-900" required />
           </div>
-          <button class="btn btn-primary font-semibold col-span-full" type="submit">Log in</button>
-          <p class="text-sm opacity-80 col-span-full">Your role is read from Firestore at <code>/artifacts/carte_diem/public/data/roles/&lt;UID&gt;</code>.</p>
+          <button class="btn btn-primary col-span-full" type="submit">Log in</button>
         </form>
       </div>
     </section>
 
-    <!-- ADMIN -->
+    <!-- ADMIN DASHBOARD -->
     <section id="admin" class="hidden">
-      <header class="bg-[var(--panel)] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <header class="panel rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
         <h2 class="text-3xl font-bold">Admin Dashboard</h2>
         <div class="flex items-center gap-3 text-sm">
           <span>UID: <b id="admin-uid"></b></span>
@@ -54,39 +69,48 @@
         </div>
       </header>
 
-      <!-- stocks overview -->
-      <div class="grid md:grid-cols-3 gap-4 mt-4">
-        <div class="card rounded-xl p-4 md:col-span-2">
-          <h3 class="text-xl font-semibold mb-2">Stocks</h3>
+      <div class="grid lg:grid-cols-3 gap-4 mt-4">
+        <section class="card rounded-2xl p-5 lg:col-span-2 shadow-lg">
+          <h3 class="text-xl font-semibold mb-3">Stocks</h3>
           <div id="admin-stocks" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        </div>
-        <div class="card rounded-xl p-4">
-          <h3 class="text-xl font-semibold mb-3">Controls</h3>
-          <div class="grid gap-3">
-            <label class="text-sm">Pick stock</label>
-            <select id="stock-control" class="rounded-lg p-2 text-gray-900"></select>
-            <div class="grid grid-cols-2 gap-2">
-              <button id="raise" class="btn btn-primary">Raise 10%</button>
-              <button id="lower" class="btn btn-primary">Lower 10%</button>
+        </section>
+        <aside class="card rounded-2xl p-5 shadow-lg space-y-4">
+          <div>
+            <h3 class="text-xl font-semibold mb-2">Set Starting Funds (All Traders)</h3>
+            <div class="grid grid-cols-[1fr_auto] gap-2">
+              <input id="global-start-amount" type="number" min="0" placeholder="10000" class="rounded-lg p-2 text-gray-900" />
+              <button id="apply-all-funds" class="btn btn-primary">Apply</button>
             </div>
-            <hr class="border-white/20 my-2" />
-            <label class="text-sm">Set starting funds for a trader</label>
-            <input id="start-amount" type="number" min="0" placeholder="10000" class="rounded-lg p-2 text-gray-900" />
-            <select id="trader-list" class="rounded-lg p-2 text-gray-900"></select>
-            <button id="set-funds" class="btn btn-primary">Set Funds</button>
+            <p class="text-xs text-[var(--muted)] mt-1">Applies to every trader account. No dropdowns.</p>
           </div>
-        </div>
-      </div>
-
-      <div class="card rounded-xl p-4 mt-4">
-        <h3 class="text-xl font-semibold mb-2">Selected trader</h3>
-        <div id="trader-portfolio-view" class="text-sm"></div>
+          <hr class="border-white/20" />
+          <div>
+            <h3 class="text-xl font-semibold mb-2">Trader Portfolio & History</h3>
+            <select id="admin-trader-select" class="rounded-lg p-2 text-gray-900 w-full"></select>
+            <div id="admin-trader-summary" class="metric rounded-xl p-3 mt-3 text-sm"></div>
+            <div class="mt-3 overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-left text-[var(--muted)]">
+                  <tr>
+                    <th class="py-1 pr-3">Time</th>
+                    <th class="py-1 pr-3">Action</th>
+                    <th class="py-1 pr-3">Stock</th>
+                    <th class="py-1 pr-3">Qty</th>
+                    <th class="py-1 pr-3">Price</th>
+                    <th class="py-1 pr-3">Cash After</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-trade-history"></tbody>
+              </table>
+            </div>
+          </div>
+        </aside>
       </div>
     </section>
 
-    <!-- TRADER -->
+    <!-- TRADER DASHBOARD -->
     <section id="trader" class="hidden">
-      <header class="bg-[var(--panel)] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <header class="panel rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
         <h2 class="text-3xl font-bold">Trader Dashboard</h2>
         <div class="flex items-center gap-3 text-sm">
           <span>UID: <b id="trader-uid"></b></span>
@@ -94,58 +118,58 @@
         </div>
       </header>
 
-      <div class="grid md:grid-cols-3 gap-4 mt-4">
-        <div class="card rounded-xl p-4 md:col-span-2">
-          <h3 class="text-xl font-semibold mb-2">Available Stocks</h3>
+      <!-- Top metrics -->
+      <section class="grid md:grid-cols-3 gap-4 mt-4">
+        <div class="metric rounded-2xl p-4 text-center">
+          <h4>Working Capital</h4>
+          <div class="text-3xl font-extrabold mt-1">$<span id="working-capital">0.00</span></div>
+        </div>
+        <div class="metric rounded-2xl p-4 text-center">
+          <h4>Invested Capital</h4>
+          <div class="text-3xl font-extrabold mt-1">$<span id="investment-capital">0.00</span></div>
+        </div>
+        <div class="metric rounded-2xl p-4 text-center">
+          <h4>Profit / Loss</h4>
+          <div class="text-3xl font-extrabold mt-1"><span id="profit-loss">0.00</span></div>
+        </div>
+      </section>
+
+      <!-- Stocks -->
+      <section class="grid lg:grid-cols-3 gap-4 mt-4">
+        <div class="card rounded-2xl p-5 lg:col-span-2 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xl font-semibold">Stocks</h3>
+          </div>
           <div id="stocks" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
-        <div class="card rounded-xl p-4">
-          <h3 class="text-xl font-semibold mb-3">Your Balances</h3>
-          <div class="grid grid-cols-2 gap-3 text-center">
-            <div class="bg-[var(--panel)] rounded-lg p-3">
-              <div class="text-xs opacity-80">Investment Capital</div>
-              <div class="text-2xl font-bold">$<span id="investment-capital">0.00</span></div>
-            </div>
-            <div class="bg-[var(--panel)] rounded-lg p-3">
-              <div class="text-xs opacity-80">Working Capital</div>
-              <div class="text-2xl font-bold">$<span id="working-capital">0.00</span></div>
-            </div>
-            <div class="bg-[var(--panel)] rounded-lg p-3 col-span-2">
-              <div id="profit-loss" class="text-2xl font-bold">0.00</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="stock-details" class="card rounded-xl p-4 mt-4 hidden">
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-          <h3 class="text-xl font-semibold"><span id="selected-name"></span></h3>
-          <div class="flex items-center gap-2">
-            <label class="flex items-center gap-2 cursor-pointer text-sm">
-              <input id="auto-sell" type="checkbox" class="h-5 w-5 rounded" /> Auto-sell at price
+        <div class="card rounded-2xl p-5 shadow-lg">
+          <h3 class="text-xl font-semibold mb-2"><span id="selected-name">Select a stock</span></h3>
+          <div class="bar-graph" id="bar-graph"></div>
+          <div class="grid grid-cols-[auto_auto_1fr_auto_auto] gap-3 items-center mt-3">
+            <label for="qty">Qty</label>
+            <input id="qty" type="number" value="1" min="1" class="rounded-lg p-2 text-gray-900 w-24" />
+            <div></div>
+            <button id="buy" class="btn btn-primary">Buy</button>
+            <button id="sell" class="btn btn-primary">Sell</button>
+            <label class="col-span-full flex items-center gap-2 text-sm mt-2">
+              <input id="auto-sell" type="checkbox" class="h-5 w-5 rounded" /> Auto-sell at/below
+              <input id="auto-sell-price" type="number" step="0.01" min="1" placeholder="Price" class="rounded-lg p-2 text-gray-900 w-32 hidden" />
             </label>
-            <input id="auto-sell-price" type="number" step="0.01" min="1" placeholder="Price" class="rounded-lg p-2 text-gray-900 hidden" />
           </div>
         </div>
-        <div class="bar-graph-container mt-3"><div id="bar-graph" class="flex items-end h-full"></div></div>
-        <div class="mt-3 grid grid-cols-[auto_auto_1fr_auto_auto] gap-3 items-center">
-          <label for="qty">Qty</label>
-          <input id="qty" type="number" value="1" min="1" class="rounded-lg p-2 text-gray-900 w-24" />
-          <div></div>
-          <button id="buy" class="btn btn-primary">Buy</button>
-          <button id="sell" class="btn btn-primary">Sell</button>
-        </div>
-      </div>
+      </section>
 
-      <div class="card rounded-xl p-4 mt-4">
+      <!-- Portfolio -->
+      <section class="card rounded-2xl p-5 mt-4 shadow-lg">
         <h3 class="text-xl font-semibold mb-2">Your Portfolio</h3>
         <div id="portfolio" class="space-y-3"></div>
-      </div>
+      </section>
     </section>
-  </div>
+  </main>
 
+  <!-- ===== App Script ===== -->
   <script type="module">
-    // ===== Firebase config (YOUR PROJECT) =====
+    // === Firebase config ===
     const FIREBASE_CONFIG = {
       apiKey: "AIzaSyC72GZrrjG4UIR3qzDs-I2QWIgSFd4Yehs",
       authDomain: "carpediem-f6948.firebaseapp.com",
@@ -154,137 +178,126 @@
       messagingSenderId: "705608113463",
       appId: "1:705608113463:web:eb70088734b33486c70eb2"
     };
-    const APP_ID = "carpe_diem"; // must match your Firestore paths
+    const APP_ID = "carpe_diem";
 
-    // ===== Firebase imports =====
+    // Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-    import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-    // ===== helpers =====
-    const $ = (id) => document.getElementById(id);
-    const ui = { show(id){ ["loading","login","admin","trader"].forEach(x=>$(x).classList.add("hidden")); $(id).classList.remove("hidden"); }, msg(t){ $("loading-msg").textContent=t; } };
+    // DOM helpers
+    const $ = (id)=>document.getElementById(id);
+    const ui = { show(which){ ["loading","login","admin","trader"].forEach(x=>$(x).classList.add("hidden")); $(which).classList.remove("hidden"); }, msg(t){ $("loading-msg").textContent=t; } };
+    function fmt(n){ return (+n).toFixed(2); }
+    function alertBox(msg){ const m=document.createElement('div'); m.className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center'; m.innerHTML=`<div class='bg-white text-gray-900 p-6 rounded-xl max-w-sm text-center shadow-2xl'><p class='mb-4'>${msg}</p><button class='btn btn-primary' onclick="this.closest('.inset-0').remove()">OK</button></div>`; document.body.appendChild(m); }
 
-    function alertBox(msg){
-      const m = document.createElement("div");
-      m.className = "fixed inset-0 bg-black/50 z-50 flex items-center justify-center";
-      m.innerHTML = `<div class='bg-white text-gray-900 p-6 rounded-xl max-w-sm text-center shadow-2xl'>
-        <p class='mb-4'>${msg}</p>
-        <button class='btn btn-primary' onclick="this.closest('.inset-0').remove()">OK</button>
-      </div>`;
-      document.body.appendChild(m);
-    }
+    // Firebase init
+    let app, db, auth; try{ app=initializeApp(FIREBASE_CONFIG); db=getFirestore(app); auth=getAuth(app);}catch(e){ ui.msg("Missing Firebase config"); throw e; }
 
-    // ===== init Firebase =====
-    let app, db, auth, userId=null; let stocks=[], traders={}, roles={}; let selectedStock=null;
-    try{
-      app = initializeApp(FIREBASE_CONFIG); db = getFirestore(app); auth = getAuth(app);
-    }catch(e){ ui.msg("Missing Firebase config. Fill FIREBASE_CONFIG at the top of this file."); throw e; }
-
-    // ===== Firestore Paths =====
+    // Paths
     const PATH = {
-      roles:   () => collection(db, `/artifacts/${APP_ID}/public/data/roles`),
-      stocks:  () => collection(db, `/artifacts/${APP_ID}/public/data/stocks`),
-      traders: () => collection(db, `/artifacts/${APP_ID}/public/data/traders`)
+      roles: ()=>collection(db, `/artifacts/${APP_ID}/public/data/roles`),
+      stocks: ()=>collection(db, `/artifacts/${APP_ID}/public/data/stocks`),
+      traders: ()=>collection(db, `/artifacts/${APP_ID}/public/data/traders`),
+      traderHistory: (uid)=>collection(db, `/artifacts/${APP_ID}/public/data/traders/${uid}/history`)
     };
 
-    // ===== Rendering =====
+    // State
+    let userId=null, stocks=[], traders={}, roles={}, selectedStock=null, historyUnsub=null;
+
+    // Renderers
     function renderStocks(){
-      const grid = $("stocks"); grid.innerHTML = "";
+      // trader list
+      const grid=$("stocks"); grid.innerHTML='';
       stocks.forEach(s=>{
-        const b = document.createElement('button');
-        b.className = "w-full text-left p-3 rounded-lg bg-[var(--panel)] hover:bg-[var(--accent)]/20 transition flex items-center justify-between";
-        b.innerHTML = `<div><div class='font-bold'>${s.name}</div><div class='text-sm opacity-80'>$${s.price.toFixed(2)}</div></div>`;
-        b.onclick=()=>{ selectedStock=s; $("stock-details").classList.remove("hidden"); renderGraph(s); };
-        grid.appendChild(b);
+        const tile=document.createElement('button');
+        tile.className='stock-tile w-full text-left transition';
+        tile.innerHTML=`<div class='flex items-center justify-between'><div><div class='font-semibold tracking-wide'>${s.name}</div><div class='text-sm text-[var(--muted)]'>$${fmt(s.price)}</div></div><div class='text-right'><div class='text-xs text-[var(--muted)]'>Last</div><div class='font-bold'>$${fmt(s.price)}</div></div></div>`;
+        tile.onclick=()=>{ selectedStock=s; $("selected-name").textContent=`${s.name} ($${fmt(s.price)})`; drawBars(s); };
+        grid.appendChild(tile);
       });
-
-      const agrid = $("admin-stocks"); agrid.innerHTML="";
-      stocks.forEach(s=>{
-        const d=document.createElement('div'); d.className="p-3 rounded-lg bg-[var(--panel)]";
-        d.innerHTML = `<div class='font-bold'>${s.name}</div><div class='text-sm opacity-80'>$${s.price.toFixed(2)}</div>`;
-        agrid.appendChild(d);
-      });
-
-      const sel=$("stock-control"); sel.innerHTML = stocks.map(s=>`<option value="${s.name}">${s.name}</option>`).join("");
+      // admin preview
+      const adminGrid=$("admin-stocks"); if(adminGrid){ adminGrid.innerHTML=''; stocks.forEach(s=>{ const d=document.createElement('div'); d.className='stock-tile'; d.innerHTML=`<div class='font-semibold'>${s.name}</div><div class='text-sm text-[var(--muted)]'>$${fmt(s.price)}</div>`; adminGrid.appendChild(d); }); }
+      // control dropdown
+      const sel=document.createElement('select');
+      $("stock-control").innerHTML=''; $("stock-control").append(...stocks.map(s=>{ const o=document.createElement('option'); o.value=s.name; o.textContent=s.name; return o; }));
     }
 
-    function renderGraph(stock){
-      if(!stock) return; $("selected-name").textContent = `${stock.name} ($${stock.price.toFixed(2)})`;
-      const el=$("bar-graph"); el.innerHTML=""; const hist=stock.history||[]; if(!hist.length) return;
-      const max=Math.max(...hist)*1.05, min=Math.min(...hist)*0.95;
-      hist.forEach((p,i)=>{ const up = i>0 && p>=hist[i-1]; const h=((p-min)/(max-min))*100; const bar=document.createElement('div'); bar.className=`bar ${up?"bg-green-500":"bg-red-500"}`; bar.style.height=`${Math.max(8,h)}%`; el.appendChild(bar); });
-      el.parentElement.scrollLeft = el.parentElement.scrollWidth;
-    }
+    function drawBars(stock){ const el=$("bar-graph"); el.innerHTML=''; const hist=stock.history||[]; if(!hist.length) return; const max=Math.max(...hist)*1.06, min=Math.min(...hist)*0.94; hist.forEach((p,i)=>{ const up=i>0 && p>=hist[i-1]; const h=((p-min)/(max-min))*100; const bar=document.createElement('div'); bar.className=`bar ${up?"bg-emerald-400":"bg-rose-400"}`; bar.style.height=`${Math.max(8,h)}%`; el.appendChild(bar); }); el.scrollLeft=el.scrollWidth; }
 
-    function renderStats(uid){
-      const t=traders[uid]||{}; const pf=t.portfolio||{}; let port=0; for(const n in pf){ const s=stocks.find(x=>x.name===n); if(s) port += (pf[n].quantity||0)*s.price; }
-      const cash=t.cash||0, initial=t.initialCash||0; $("investment-capital").textContent=port.toFixed(2); $("working-capital").textContent=cash.toFixed(2);
-      const pnl=(port+cash)-initial; const el=$("profit-loss"); el.textContent=`${pnl>=0?"+":""}${pnl.toFixed(2)} (${initial?((pnl/initial)*100).toFixed(2):"0.00"}%)`; el.classList.toggle("text-green-400", pnl>=0); el.classList.toggle("text-red-400", pnl<0);
-    }
+    function calcStats(uid){ const t=traders[uid]||{}; const pf=t.portfolio||{}; let port=0; for(const n in pf){ const s=stocks.find(x=>x.name===n); if(s) port+=(pf[n].quantity||0)*s.price; } const cash=t.cash||0; const initial=t.initialCash||0; const pnl=(port+cash)-initial; return {cash, port, initial, pnl, pnlPct: initial? (pnl/initial*100):0}; }
 
-    function renderPortfolio(uid){
-      const root=$("portfolio"); root.innerHTML=""; const t=traders[uid]||{}; const pf=t.portfolio||{};
-      Object.keys(pf).forEach(name=>{ const q=pf[name].quantity||0; if(q<=0) return; const s=stocks.find(x=>x.name===name); if(!s) return;
-        const div=document.createElement('div'); div.className="flex flex-col sm:flex-row justify-between items-center p-3 rounded-lg bg-[var(--panel)]";
-        const autoText = pf[name].autoSellPrice?`Auto-sell at $${(+pf[name].autoSellPrice).toFixed(2)}`:"No auto-sell set";
-        div.innerHTML = `<div class='flex flex-col'><span class='font-bold'>${name}</span><span class='text-sm opacity-80'>Qty: ${q}</span><span class='text-sm opacity-80'>Value: $${(q*s.price).toFixed(2)}</span></div><div class='text-sm opacity-80'>${autoText}</div>`;
-        root.appendChild(div);
-      });
-    }
+    function renderTraderTop(){ const {cash,port,initial,pnl,pnlPct}=calcStats(userId); $("working-capital").textContent=fmt(cash); $("investment-capital").textContent=fmt(port); const el=$("profit-loss"); el.textContent=`${pnl>=0?"+":""}${fmt(pnl)} (${fmt(pnlPct)}%)`; el.classList.toggle('text-emerald-300', pnl>=0); el.classList.toggle('text-rose-300', pnl<0); }
 
-    function renderAdminLists(){
-      const tsel=$("trader-list"); tsel.innerHTML=""; Object.keys(roles).filter(uid=>roles[uid].role==="trader").forEach(uid=>{ const opt=document.createElement('option'); opt.value=uid; opt.textContent=roles[uid].email||uid; tsel.appendChild(opt); });
-    }
+    function renderPortfolio(uid){ const root=$("portfolio"); root.innerHTML=''; const t=traders[uid]||{}; const pf=t.portfolio||{}; Object.keys(pf).forEach(n=>{ const q=pf[n].quantity||0; if(q<=0) return; const s=stocks.find(x=>x.name===n); if(!s) return; const d=document.createElement('div'); d.className='flex flex-col sm:flex-row justify-between items-center p-3 rounded-xl metric'; const auto=pf[n].autoSellPrice?`Auto-sell @ $${fmt(pf[n].autoSellPrice)}`:'No auto-sell'; d.innerHTML=`<div><div class='font-semibold'>${n}</div><div class='text-sm text-[var(--muted)]'>Qty ${q} • Value $${fmt(q*s.price)}</div></div><div class='text-sm text-[var(--muted)]'>${auto}</div>`; root.appendChild(d); }); }
 
-    // ===== Listeners =====
-    function listenStocks(){ onSnapshot(PATH.stocks(), snap=>{ stocks=snap.docs.map(d=>({id:d.id, ...d.data()})); renderStocks(); if(selectedStock){ const ns=stocks.find(x=>x.name===selectedStock.name); if(ns){selectedStock=ns; renderGraph(ns);} } }); }
-    function listenTraders(){ onSnapshot(PATH.traders(), snap=>{ traders={}; snap.docs.forEach(d=>traders[d.id]=d.data()); renderStats(userId); renderPortfolio(userId); }); }
-    function listenRoles(){ onSnapshot(PATH.roles(), snap=>{ roles={}; snap.docs.forEach(d=>roles[d.id]=d.data()); renderAdminLists(); }); }
+    function renderAdminTraderSummary(uid){ const s=$("admin-trader-summary"); if(!uid||!traders[uid]){ s.innerHTML='<span class="text-[var(--muted)]">Select a trader…</span>'; return; } const {cash,port,initial,pnl,pnlPct}=calcStats(uid); s.innerHTML = `<div class='grid grid-cols-2 gap-2 text-center'>
+      <div><div class='text-xs text-[var(--muted)]'>Working</div><div class='text-xl font-bold'>$${fmt(cash)}</div></div>
+      <div><div class='text-xs text-[var(--muted)]'>Invested</div><div class='text-xl font-bold'>$${fmt(port)}</div></div>
+      <div class='col-span-2'><div class='text-xs text-[var(--muted)]'>P/L</div><div class='text-xl font-bold ${pnl>=0?"text-emerald-300":"text-rose-300"}'>${pnl>=0?"+":""}${fmt(pnl)} (${fmt(pnlPct)}%)</div></div>`; }
 
-    // ===== Auth flow =====
+    // Listeners
+    function listenStocks(){ onSnapshot(PATH.stocks(), snap=>{ stocks=snap.docs.map(d=>({id:d.id,...d.data()})); renderStocks(); if(selectedStock){ const ns=stocks.find(x=>x.name===selectedStock.name); if(ns){selectedStock=ns; drawBars(ns);} } renderTraderTop(); }); }
+    function listenTraders(){ onSnapshot(PATH.traders(), snap=>{ traders={}; snap.docs.forEach(d=>traders[d.id]=d.data()); renderTraderTop(); renderPortfolio(userId); }); }
+    function listenRoles(){ onSnapshot(PATH.roles(), snap=>{ roles={}; snap.docs.forEach(d=>roles[d.id]=d.data()); refreshAdminTraderSelect(); }); }
+
+    function refreshAdminTraderSelect(){ const sel=$("admin-trader-select"); if(!sel) return; sel.innerHTML=''; Object.keys(roles).filter(uid=>roles[uid].role==='trader').forEach(uid=>{ const o=document.createElement('option'); o.value=uid; o.textContent=roles[uid].email||uid; sel.appendChild(o); }); if(sel.value){ renderAdminTraderSummary(sel.value); loadTradeHistory(sel.value); } }
+
+    async function loadTradeHistory(uid){ const body=$("admin-trade-history"); body.innerHTML=''; if(historyUnsub) {historyUnsub(); historyUnsub=null;} const qcol=PATH.traderHistory(uid); const qs=await getDocs(qcol); const rows=[]; qs.forEach(d=>rows.push(d.data())); rows.sort((a,b)=>a.ts-b.ts); rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class='pr-3 py-1'>${new Date(r.ts).toLocaleTimeString()}</td><td class='pr-3 py-1'>${r.action}</td><td class='pr-3 py-1'>${r.stock}</td><td class='pr-3 py-1'>${r.qty}</td><td class='pr-3 py-1'>$${fmt(r.price)}</td><td class='pr-3 py-1'>$${fmt(r.cashAfter)}</td>`; body.appendChild(tr); }); }
+
+    // Auth flow
     onAuthStateChanged(auth, async(user)=>{
-      if(!user){ ui.show("login"); return; }
+      if(!user){ ui.show('login'); return; }
       userId=user.uid;
-      const rs=await getDoc(doc(PATH.roles(), user.uid)); const role=rs.exists()? rs.data().role:null;
-      if(role==="admin"){ $("admin-uid").textContent=user.uid; ui.show("admin"); }
-      else if(role==="trader"){ $("trader-uid").textContent=user.uid; ui.show("trader"); }
-      else{ alertBox("Role not found for this UID in roles collection. Create /roles/"+user.uid); await signOut(auth); ui.show("login"); return; }
+      const roleDoc=await getDoc(doc(PATH.roles(), user.uid)); const role=roleDoc.exists()?roleDoc.data().role:null;
+      if(role==='admin'){ $("admin-uid").textContent=user.uid; ui.show('admin'); }
+      else if(role==='trader'){ $("trader-uid").textContent=user.uid; ui.show('trader'); }
+      else{ alertBox('Role missing for this user. Create /roles/'+user.uid); await signOut(auth); ui.show('login'); return; }
       listenStocks(); listenTraders(); listenRoles(); startFluctuations(); startAutoSell();
     });
 
-    $("login-form").addEventListener("submit", async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value.trim()); }catch(err){ console.error(err); alertBox(err.code==="auth/invalid-credential"?"Invalid email or password":"Login failed."); } });
-    $("logout-admin").addEventListener("click", ()=>signOut(auth));
-    $("logout-trader").addEventListener("click", ()=>signOut(auth));
+    // Login + logout
+    $("login-form").addEventListener('submit', async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value.trim()); }catch(err){ console.error(err); alertBox(err.code==='auth/invalid-credential'? 'Invalid email or password':'Login failed.'); } });
+    $("logout-admin").addEventListener('click', ()=>signOut(auth));
+    $("logout-trader").addEventListener('click', ()=>signOut(auth));
 
-    // ===== Admin actions =====
-    async function doPriceChange(mult){ const name=$("stock-control").value; const s=stocks.find(x=>x.name===name); if(!s) return; const newPrice=Math.max(1, +(s.price*mult).toFixed(2)); const hist=[...(s.history||[]), newPrice]; if(hist.length>20) hist.shift(); await setDoc(doc(PATH.stocks(), s.id), { price:newPrice, history:hist }, { merge:true }); }
-    $("raise").addEventListener("click", ()=>doPriceChange(1.1));
-    $("lower").addEventListener("click", ()=>doPriceChange(0.9));
+    // Admin: global starting funds (apply to all traders)
+    $("apply-all-funds").addEventListener('click', async()=>{
+      const amt=parseFloat($("global-start-amount").value); if(isNaN(amt)||amt<0) return alertBox('Enter a valid amount.');
+      const traderUIDs = Object.keys(roles).filter(uid=>roles[uid].role==='trader');
+      for(const uid of traderUIDs){ await setDoc(doc(PATH.traders(), uid), { cash: amt, initialCash: amt }, { merge:true }); }
+      alertBox('Starting funds updated for '+traderUIDs.length+' traders.');
+    });
 
-    $("set-funds").addEventListener("click", async()=>{ const uid=$("trader-list").value; const amt=parseFloat($("start-amount").value); if(!uid || isNaN(amt) || amt<0) return alertBox("Enter a valid amount."); await setDoc(doc(PATH.traders(), uid), { cash: amt, initialCash: amt }, { merge:true }); alertBox("Starting funds set for "+(roles[uid]?.email||uid)); });
+    // Admin: select trader to view
+    $("admin-trader-select").addEventListener('change', (e)=>{ const uid=e.target.value; renderAdminTraderSummary(uid); loadTradeHistory(uid); });
 
-    $("trader-list").addEventListener("change", ()=>{ const uid=$("trader-list").value; const t=traders[uid]; if(!t) return; let html=`<h4 class='font-bold'>${roles[uid]?.email||uid}</h4>`; html+=`<p class='mt-1'>Cash: $${(t.cash||0).toFixed(2)}</p>`; let total=t.cash||0; const pf=t.portfolio||{}; for(const n in pf){ const s=stocks.find(x=>x.name===n); if(!s) continue; const q=pf[n].quantity||0; total+=q*s.price; html+=`<p>${n}: ${q} @ $${s.price.toFixed(2)}`; } html+=`<p class='font-bold mt-2'>Total Value: $${total.toFixed(2)}`; $("trader-portfolio-view").innerHTML=html; });
+    // Trader interactions
+    $("auto-sell").addEventListener('change', e=> $("auto-sell-price").classList.toggle('hidden', !e.target.checked));
 
-    // ===== Trader actions =====
-    $("auto-sell").addEventListener("change", e=> $("auto-sell-price").classList.toggle("hidden", !e.target.checked));
+    async function buySell(kind){ if(!selectedStock||!userId) return; const q=parseInt($("qty").value,10); if(isNaN(q)||q<=0) return alertBox('Enter a valid quantity.'); const ref=doc(PATH.traders(), userId); const snap=await getDoc(ref); const data=snap.data()||{}; data.portfolio=data.portfolio||{}; data.cash=data.cash||0; if(kind==='buy'){ const cost=q*selectedStock.price; if(data.cash<cost) return alertBox('Not enough cash.'); data.cash-=cost; const cur=data.portfolio[selectedStock.name]?.quantity||0; data.portfolio[selectedStock.name]={ quantity:cur+q, autoSellPrice:($("auto-sell").checked && !isNaN(parseFloat($("auto-sell-price").value)))? parseFloat($("auto-sell-price").value): (data.portfolio[selectedStock.name]?.autoSellPrice||null) }; } else { const owned=data.portfolio[selectedStock.name]?.quantity||0; if(owned<q) return alertBox('Not enough shares.'); data.cash += q*selectedStock.price; data.portfolio[selectedStock.name].quantity = owned - q; if(data.portfolio[selectedStock.name].quantity<=0) delete data.portfolio[selectedStock.name]; }
+      await setDoc(ref, data);
+      const stats=calcStats(userId); await addDoc(PATH.traderHistory(userId), { ts:Date.now(), action:kind, stock:selectedStock.name, qty:q, price:selectedStock.price, cashAfter:stats.cash });
+      alertBox(kind==='buy'?`Bought ${q} ${selectedStock.name}`:`Sold ${q} ${selectedStock.name}`);
+    }
+    $("buy").addEventListener('click', ()=>buySell('buy'));
+    $("sell").addEventListener('click', ()=>buySell('sell'));
 
-    async function buySell(kind){ if(!selectedStock || !userId) return; const q=parseInt($("qty").value,10); if(isNaN(q)||q<=0) return alertBox("Enter a valid quantity."); const ref=doc(PATH.traders(), userId); const snap=await getDoc(ref); const data=snap.data()||{}; data.portfolio=data.portfolio||{}; data.cash=data.cash||0; if(kind==='buy'){ const cost=q*selectedStock.price; if(data.cash<cost) return alertBox("Not enough cash."); data.cash-=cost; const cur=data.portfolio[selectedStock.name]?.quantity||0; data.portfolio[selectedStock.name]={ quantity: cur+q, autoSellPrice: ($("auto-sell").checked && !isNaN(parseFloat($("auto-sell-price").value)))? parseFloat($("auto-sell-price").value) : (data.portfolio[selectedStock.name]?.autoSellPrice||null) }; } else { const owned=data.portfolio[selectedStock.name]?.quantity||0; if(owned<q) return alertBox("Not enough shares."); data.cash += q*selectedStock.price; data.portfolio[selectedStock.name].quantity = owned - q; if(data.portfolio[selectedStock.name].quantity<=0) delete data.portfolio[selectedStock.name]; } await setDoc(ref, data); alertBox(kind==='buy'?`Bought ${q} ${selectedStock.name}`:`Sold ${q} ${selectedStock.name}`); }
-    $("buy").addEventListener("click", ()=>buySell('buy'));
-    $("sell").addEventListener("click", ()=>buySell('sell'));
-
-    // ===== background tasks =====
+    // Background tasks
     let tick=null, autos=null;
-    function startFluctuations(){ if(tick) clearInterval(tick); tick=setInterval(async()=>{ if(!stocks.length) return; for(const s of stocks){ const change=(Math.random()-0.5)*0.05; const price=Math.max(1, +(s.price*(1+change)).toFixed(2)); const hist=[...(s.history||[]), price]; if(hist.length>20) hist.shift(); await setDoc(doc(PATH.stocks(), s.id), { price, history:hist }, { merge:true }); } }, 1000); }
-    function startAutoSell(){ if(autos) clearInterval(autos); autos=setInterval(async()=>{ if(!userId || !traders[userId]) return; const t=traders[userId]; let changed=false; for(const name in (t.portfolio||{})){ const pos=t.portfolio[name]; const s=stocks.find(x=>x.name===name); if(!s) continue; if(pos.autoSellPrice && s.price <= pos.autoSellPrice && pos.quantity>0){ t.cash=(t.cash||0)+pos.quantity*s.price; delete t.portfolio[name]; changed=true; alertBox(`Auto-sold all ${pos.quantity} ${name} at $${s.price.toFixed(2)}`); } } if(changed) await setDoc(doc(PATH.traders(), userId), t); }, 5000); }
+    function startFluctuations(){ if(tick) clearInterval(tick); // every 2s for balanced difficulty
+      tick=setInterval(async()=>{ if(!stocks.length) return; for(const s of stocks){ const change=(Math.random()-0.5)*0.04; // ±2%
+          const price=Math.max(1, +(s.price*(1+change)).toFixed(2)); const hist=[...(s.history||[]), price]; if(hist.length>30) hist.shift(); await setDoc(doc(PATH.stocks(), s.id), { price, history:hist }, { merge:true }); } }, 2000);
+    }
+    function startAutoSell(){ if(autos) clearInterval(autos); autos=setInterval(async()=>{ if(!userId||!traders[userId]) return; const t=traders[userId]; let changed=false; for(const name in (t.portfolio||{})){ const pos=t.portfolio[name]; const s=stocks.find(x=>x.name===name); if(!s) continue; if(pos.autoSellPrice && s.price <= pos.autoSellPrice && pos.quantity>0){ t.cash=(t.cash||0)+pos.quantity*s.price; delete t.portfolio[name]; changed=true; alertBox(`Auto-sold all ${pos.quantity} ${name} at $${fmt(s.price)}`); await addDoc(PATH.traderHistory(userId), { ts:Date.now(), action:'auto-sell', stock:name, qty:pos.quantity, price:s.price, cashAfter:t.cash }); } } if(changed) await setDoc(doc(PATH.traders(), userId), t); }, 5000); }
 
-    // ===== initial bootstrap =====
-    (async function init(){
-      // seed demo stocks if empty
-      const sSnap = await getDocs(PATH.stocks());
-      if(sSnap.empty){ const names=["TechCorp","GlobalData","ApexInnovations","CyberDynamics","QuantumLeap","AetherSystems","NovaSolutions","FusionCore","TitanHoldings","PinnacleTech","Starlight","Moonstone","Solstice","Veridian","Aurelia","Zenith","Orion","Equinox","Radiant","Vanguard"]; for(const name of names){ const price=+(10+Math.random()*490).toFixed(2); await setDoc(doc(PATH.stocks()), { name, price, history:[price] }); } }
-      ui.show("login");
+    // Bootstrap: seed 25 Indian stocks if empty
+    (async function init(){ const sSnap=await getDocs(PATH.stocks()); if(sSnap.empty){ const india=[
+      'Reliance Industries','TCS','HDFC Bank','ICICI Bank','Infosys','SBI','Bharti Airtel','ITC','Hindustan Unilever','HCL Technologies','Wipro','Larsen & Toubro','Axis Bank','Kotak Mahindra Bank','Bajaj Finance','Tata Motors','Maruti Suzuki','NTPC','Power Grid','UltraTech Cement','Sun Pharma','Asian Paints','Adani Enterprises','Adani Ports','Tech Mahindra'
+    ]; for(const name of india){ const price=+(100+Math.random()*900).toFixed(2); await addDoc(PATH.stocks(), { name, price, history:[price] }); } }
+      ui.show('login');
     })();
   </script>
 </body>
 </html>
+
