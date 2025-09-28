@@ -6,16 +6,16 @@
   <title>Carpe Diem – Stock Simulator</title>
   <style>
     :root{
-      --bg:#0b132b;          /* deep navy */
-      --panel:#14213d;       /* dark blue */
-      --card:#1b294a;        /* slate blue */
-      --accent:#4cafef;      /* bright blue */
-      --accent-2:#357abd;    /* darker blue */
-      --text:#ffffff;        /* WHITE text */
-      --muted:#eef4ff;       /* near-white muted */
-      --muted-2:#d7e3ff;     /* secondary muted */
-      --good:#3ddc97;        /* green */
-      --bad:#ff6b6b;         /* red */
+      --bg:#0b132b;
+      --panel:#14213d;
+      --card:#1b294a;
+      --accent:#4cafef;
+      --accent-2:#357abd;
+      --text:#ffffff;     /* WHITE */
+      --muted:#eef4ff;    /* near-white */
+      --muted-2:#d7e3ff;
+      --good:#3ddc97;
+      --bad:#ff6b6b;
       --border:#ffffff33;
     }
     *{box-sizing:border-box}
@@ -50,7 +50,7 @@
     .login-shell{ min-height:70vh; display:grid; place-items:center; }
     .login-box{ width:min(480px,100%); padding:28px }
     .input{
-      width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:#0e1a34; color:var(--text);
+      width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:#0e1a34; color:#fff;
     }
     .input::placeholder{ color:#f0f5ff }
     label{ font-size:.9rem; color:var(--muted); margin-bottom:6px; display:inline-block }
@@ -225,7 +225,7 @@
 
   <!-- APP (Firebase + logic) -->
   <script type="module">
-    /***** Firebase SDK *****/
+    /***** Firebase *****/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
     import {
       getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
@@ -249,9 +249,9 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    /* Force login every visit (no silent reuse) */
+    /* Require login each tab session */
     await setPersistence(auth, browserSessionPersistence);
-    try { await signOut(auth); } catch(e){}
+    try{ await signOut(auth); }catch(e){}
 
     /***** Elements *****/
     const $ = (id)=>document.getElementById(id);
@@ -302,13 +302,12 @@
     /***** State *****/
     let me = null, myRole = null;
     let selectedId = null;
-    let stocks = {};    // id -> { id, name, baseline, baselineVer, defaultBaseline }
-    let myTrader = null; // live snapshot of my trader doc (for auto-sell)
-    let series = [];    // chart values
-    let chartCtx = chartEl.getContext("2d");
+    let stocks = {};    // id -> { id, name, baseline, baselineVer, defaultBaseline, osc }
+    let myTrader = null;
+    let series = [];
+    let chartCtx = $("chart").getContext("2d");
     let lastSampleTime = 0;
 
-    // 25 Indian stocks
     const SEED_STOCKS = [
       "Reliance Industries","TCS","Infosys","HDFC Bank","ICICI Bank",
       "SBI","Bharti Airtel","HCL Technologies","Asian Paints","Wipro",
@@ -317,31 +316,43 @@
       "Power Grid","Adani Ports","Axis Bank","Maruti Suzuki","Grasim Industries"
     ];
 
-    /***** Helpers *****/
-    const TICK_MS = 5000;       // prices “target” change every 5s
-    const SIGMA   = 0.018;      // ±1.8% around baseline
+    /***** Pricing model (up/down, smooth, deterministic) *****/
+    const TICK_MS = 5000;             // new target every 5s
+    const AMP1    = 0.006;            // sin #1 amplitude (~0.6%)
+    const AMP2    = 0.004;            // sin #2 amplitude (~0.4%)
+    const NOISE   = 0.0035;           // small zero-mean noise (~0.35%)
     function hashToUnit(str){
-      let h = 2166136261 >>> 0; // FNV-1a
-      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-      return (h >>> 0) / 4294967295;
+      let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967295;
     }
-    function targetFor(stockId, baseline, baselineVer, bucket){
-      const safeBase = Number.isFinite(baseline) ? baseline : 500;
-      const u  = hashToUnit(`${APP_ID}|${stockId}|${baselineVer||0}|${bucket}`);
-      const v  = hashToUnit(`${APP_ID}|${stockId}|${baselineVer||0}|${bucket}|x`);
-      const z  = ((u + v)/2) - 0.5; // [-0.5,0.5]
-      const pct= z * 2 * SIGMA;     // ~[-SIGMA, +SIGMA]
-      return safeBase * (1 + pct);
+    function ensureOsc(s){
+      if (s.osc) return;
+      const u1 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|p1`);
+      const u2 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|p2`);
+      const u3 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|w1`);
+      const u4 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|w2`);
+      s.osc = {
+        phase1: 2*Math.PI*u1,
+        phase2: 2*Math.PI*u2,
+        w1: 2*Math.PI/(6 + Math.floor(u3*6)),   // periods 6..11 buckets
+        w2: 2*Math.PI/(10+ Math.floor(u4*8))    // periods 10..17 buckets
+      };
     }
+    function targetForBucket(stock, bucket){
+      const base = Number.isFinite(stock.baseline) ? stock.baseline : stock.defaultBaseline || 500;
+      ensureOsc(stock);
+      const { phase1, phase2, w1, w2 } = stock.osc;
+      const mix = AMP1*Math.sin(w1*bucket + phase1) + AMP2*Math.sin(w2*bucket + phase2);
+      const n = (hashToUnit(`${APP_ID}|${stock.id}|${stock.baselineVer||0}|${bucket}|noise`) - 0.5) * 2 * NOISE;
+      return base * (1 + mix + n);
+    }
+    function easeInOutQuad(x){ return x<.5 ? 2*x*x : -1+(4-2*x)*x; }
     function smoothPriceFor(stock, t){
-      const baseline = Number.isFinite(stock.baseline) ? stock.baseline : stock.defaultBaseline;
-      const { baselineVer = 0 } = stock;
-      const bucket = Math.floor(t / TICK_MS);
-      const frac   = (t % TICK_MS) / TICK_MS;
-      const ease   = frac<.5 ? 2*frac*frac : -1+(4-2*frac)*frac; // easeInOutQuad
-      const a = targetFor(stock.id, baseline, baselineVer, bucket);
-      const b = targetFor(stock.id, baseline, baselineVer, bucket+1);
-      return a + (b - a) * ease;
+      const t0 = stock.baselineVer || 0;
+      const bucket = Math.floor((t - t0)/TICK_MS);
+      const frac   = ((t - t0) % TICK_MS) / TICK_MS;
+      const a = targetForBucket(stock, bucket);
+      const b = targetForBucket(stock, bucket+1);
+      return a + (b - a) * easeInOutQuad(frac);
     }
     function fmt(n){ return (+n).toLocaleString("en-IN",{maximumFractionDigits:2,minimumFractionDigits:2}); }
     function setText(el, val){ if(el) el.textContent = val; }
@@ -352,7 +363,6 @@
       if(!user){ showLogin(); return; }
       me = user;
 
-      // roles/<uid> preferred, fallback email match
       const roleDoc = await getDoc(doc(db,"artifacts",APP_ID,"public","data","roles", user.uid));
       if (roleDoc.exists()){
         myRole = roleDoc.data().role;
@@ -367,7 +377,7 @@
       roleHeader.textContent = `Welcome, ${myRole}`;
       adminControls.classList.toggle("hidden", myRole!=="admin");
       adminOnlyHint.classList.toggle("hidden", myRole==="admin");
-      tradeBar.classList.toggle("hidden", myRole==="admin");   // admin cannot buy/sell
+      tradeBar.classList.toggle("hidden", myRole==="admin");
       $("autoRow").classList.toggle("hidden", myRole==="admin");
 
       loginSection.classList.add("hidden");
@@ -377,7 +387,7 @@
       attachRealtime();
       startAnimationLoop();
       attachTraderDoc();
-      if (myRole==="admin") { loadRankingsLoop(); }
+      if (myRole==="admin") loadRankingsLoop();
     });
 
     function showLogin(msg){
@@ -405,13 +415,11 @@
 
     /***** Stocks *****/
     async function bootstrapStocks(){
-      // Local defaults (no NaN even if DB empty)
       SEED_STOCKS.forEach((name)=>{
         const id = slug(name);
         if (!stocks[id]) stocks[id] = { id, name, defaultBaseline: +(300 + Math.random()*900).toFixed(2), baseline: undefined, baselineVer: 0 };
       });
 
-      // Seed DB if empty and user is admin
       const col = collection(db,"artifacts",APP_ID,"public","data","stocks");
       const snap = await getDocs(col);
       if (snap.empty && myRole==="admin"){
@@ -429,12 +437,14 @@
         snap.forEach(d => {
           const data = d.data()||{};
           const id = d.id;
+          const prev = stocks[id] || {};
           stocks[id] = {
             id,
-            name: data.name || stocks[id]?.name || id,
+            name: data.name || prev.name || id,
             baseline: Number(data.baseline),
             baselineVer: Number(data.baselineVer)||0,
-            defaultBaseline: stocks[id]?.defaultBaseline || +(300 + Math.random()*900).toFixed(2)
+            defaultBaseline: prev.defaultBaseline || +(300 + Math.random()*900).toFixed(2),
+            osc: prev.osc   // keep existing oscillation parameters
           };
         });
         renderStockTiles();
@@ -460,11 +470,11 @@
       const s = stocks[id];
       detailName.textContent = s.name;
       series = [];
-      $("tradeMsg").textContent = "";
+      tradeMsg.textContent = "";
       raiseBtn.disabled = lowerBtn.disabled = (myRole!=="admin");
     }
 
-    // Admin ±10%
+    // Admin ±10% with optimistic update so UI changes instantly
     raiseBtn?.addEventListener("click", ()=> adjustSelected( 0.10));
     lowerBtn?.addEventListener("click", ()=> adjustSelected(-0.10));
     async function adjustSelected(delta){
@@ -473,7 +483,20 @@
       const ref = doc(db,"artifacts",APP_ID,"public","data","stocks", selectedId);
       const base = Number.isFinite(s.baseline) ? s.baseline : s.defaultBaseline;
       const newBase = +(base * (1+delta)).toFixed(2);
-      await updateDoc(ref, { baseline:newBase, baselineVer: Date.now() });
+      const ver = Date.now();
+
+      // optimistic local update (so tiles/graph move immediately)
+      s.baseline = newBase;
+      s.baselineVer = ver;
+      s.osc = null;   // reset oscillation phases on baseline change
+      stocks[selectedId] = s;
+
+      // push to Firestore (snapshot will confirm)
+      try{
+        await updateDoc(ref, { baseline:newBase, baselineVer: ver });
+      }catch(e){
+        console.error(e);
+      }
     }
 
     /***** Trader doc + Auto-sell *****/
@@ -491,7 +514,6 @@
       });
     }
 
-    // Auto-sell UI
     setAutoBtn.addEventListener("click", async ()=>{
       autoMsg.textContent = "";
       if (!me || myRole!=="trader"){ autoMsg.textContent = "Traders only."; return; }
@@ -500,11 +522,10 @@
       const q = Math.max(1, parseInt(autoQty.value||"1",10));
       if (!Number.isFinite(p) || p<=0){ autoMsg.textContent = "Enter a valid price."; return; }
       const ref = traderRef(me.uid);
-      const data = (myTrader || { autos:{} });
-      data.autos = data.autos || {};
-      data.autos[selectedId] = { price:p, qty:q };
-      await setDoc(ref, { autos: data.autos }, { merge:true });
-      autoMsg.textContent = `Auto-sell set: ₹${fmt(p)} / ${q} shares`;
+      const autos = { ...(myTrader?.autos||{}) };
+      autos[selectedId] = { price:p, qty:q };
+      await setDoc(ref, { autos }, { merge:true });
+      autoMsg.textContent = `Auto-sell set: ₹${fmt(p)} / ${q}`;
     });
 
     clearAutoBtn.addEventListener("click", async ()=>{
@@ -524,7 +545,6 @@
         const st = stocks[sid]; if (!st) continue;
         const price = smoothPriceFor(st, performance.now());
         if (price >= rule.price){
-          // sell up to qty or available
           const ref = traderRef(me.uid);
           const snap = await getDoc(ref);
           const t = snap.exists()? snap.data(): { cash:0, initialCash:0, portfolio:{} };
@@ -533,17 +553,11 @@
           if (sellQty > 0){
             t.cash = (+t.cash||0) + sellQty*price;
             pos.quantity -= sellQty;
-            if (pos.quantity>0){
-              t.portfolio[sid] = pos;
-            } else {
-              delete t.portfolio[sid];
-            }
-            // remove the rule
+            if (pos.quantity>0) t.portfolio[sid] = pos; else delete t.portfolio[sid];
             const autos2 = { ...(t.autos||{}) }; delete autos2[sid];
             await setDoc(ref, { cash:t.cash, portfolio:t.portfolio, autos:autos2 }, { merge:true });
             if (sid===selectedId){ autoMsg.textContent = `Auto-sold ${sellQty} at ₹${fmt(price)}`; }
           } else {
-            // no shares → just clear the rule
             const autos2 = { ...(t.autos||{}) }; delete autos2[sid];
             await setDoc(ref, { autos:autos2 }, { merge:true });
           }
@@ -552,8 +566,6 @@
     }
 
     /***** Trader metrics *****/
-    function priceNow(id){ const s=stocks[id]; return s? smoothPriceFor(s, performance.now()):0; }
-
     async function portfolioAndStats(uid){
       const s = await getDoc(traderRef(uid));
       const data = s.exists()? s.data(): { cash:0, initialCash:0, portfolio:{} };
@@ -604,8 +616,7 @@
         if (pos.quantity < q){ tradeMsg.textContent = "Not enough shares."; return; }
         pos.quantity -= q; t.cash += q * price;
       }
-      if (pos.quantity>0) t.portfolio[selectedId] = pos;
-      else delete t.portfolio[selectedId];
+      if (pos.quantity>0) t.portfolio[selectedId] = pos; else delete t.portfolio[selectedId];
 
       await setDoc(ref, t, { merge:true });
       tradeMsg.textContent = kind==="buy" ? `Bought ${q}` : `Sold ${q}`;
@@ -641,7 +652,7 @@
           pfSummary.textContent = `Working: ₹${fmt(stats.working)}  •  Invested: ₹${fmt(stats.invested)}  •  P/L: ${stats.pl>=0?'+':''}${fmt(stats.pl)} (${fmt(stats.plPct)}%)`;
           pfTable.innerHTML = "";
           Object.entries(stats.data.portfolio||{}).forEach(([sid,pos])=>{
-            const p = priceNow(sid);
+            const p = smoothPriceFor(stocks[sid], performance.now());
             const val = p * (pos.quantity||0);
             const tr = document.createElement("tr"); tr.className="data";
             tr.innerHTML = `<td>${stocks[sid]?.name||sid}</td><td>${pos.quantity||0}</td><td>₹ ${fmt(p)}</td><td>₹ ${fmt(val)}</td>`;
@@ -653,7 +664,7 @@
     }
     function loadRankingsLoop(){ loadRankings(); setInterval(loadRankings, 6000); }
 
-    /***** Animation loop (prices, chart, autos, metrics) *****/
+    /***** Animation: prices, chart, autos, metrics *****/
     function drawChart(){
       const w = chartEl.width, h = chartEl.height;
       chartCtx.clearRect(0,0,w,h);
@@ -677,9 +688,8 @@
         if (now - last > 100){
           last = now;
           Object.values(stocks).forEach(s=>{
-            const p = smoothPriceFor(s, t);
             const el = document.getElementById(`p-${s.id}`);
-            if (el) el.textContent = fmt(p);
+            if (el) el.textContent = fmt(smoothPriceFor(s, t));
           });
           if (selectedId && stocks[selectedId]){
             const p = smoothPriceFor(stocks[selectedId], t);
@@ -691,7 +701,7 @@
               drawChart();
             }
           }
-          if (myRole==="trader") { refreshMetrics(); checkAutoSells(); }
+          if (myRole==="trader"){ refreshMetrics(); checkAutoSells(); }
         }
         requestAnimationFrame(tick);
       }
