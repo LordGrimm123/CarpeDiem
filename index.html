@@ -1,176 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Carpe Diem Trading Simulator</title>
-  <!-- Tailwind for quick, clean layout -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carpe Diem Stock Simulator</title>
   <style>
-    :root{
-      /* Royal palette */
-      --royal-navy:#0b132b;    /* page background */
-      --royal-blue:#1f3c88;    /* panels */
-      --sapphire:#243b82;      /* cards */
-      --indigo:#142b6f;        /* widgets */
-      --gold:#f0c808;          /* accents */
-      --silver:#e6eef7;        /* text */
-      --muted:#9fb3c8;         /* subtle text */
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #0d0d0d;
+      color: #f0f0f0;
     }
-    html,body{height:100%}
-    body{background:var(--royal-navy); color:var(--silver)}
-    .panel{background:linear-gradient(180deg, var(--royal-blue), var(--indigo));}
-    .card{background:linear-gradient(180deg, var(--sapphire), var(--indigo));}
-    .btn{display:inline-flex;align-items:center;justify-content:center;padding:.65rem 1rem;border-radius:.65rem;font-weight:600}
-    .btn-primary{background:var(--gold); color:#111827}
-    .btn-primary:hover{filter:brightness(1.05)}
-    .btn-ghost{border:1px solid #ffffff22}
-    .stock-tile{background:rgba(255,255,255,.05);border:1px solid #ffffff14;border-radius:.75rem;padding:.75rem}
-    .stock-tile:hover{border-color:#ffffff33;transform:translateY(-1px)}
-    .metric{background:rgba(255,255,255,.06);border:1px solid #ffffff14}
-    .metric h4{font-size:.8rem;letter-spacing:.02em;color:var(--muted)}
-    .bar-graph{height:160px;display:flex;align-items:flex-end;gap:3px;overflow-x:auto;border:1px solid #ffffff22;border-radius:.5rem;padding:.25rem}
-    .bar{width:.7rem;min-width:.7rem}
+    header {
+      background: linear-gradient(90deg, #1a1a40, #3b0a45);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .container {
+      padding: 20px;
+    }
+    .hidden { display: none; }
+    .login-box {
+      max-width: 350px;
+      margin: 120px auto;
+      background: #1a1a1a;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 6px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 6px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #8b5cf6;
+      color: white;
+      font-weight: bold;
+    }
+    button:hover { background: #6d28d9; }
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      background: #1e1e2f;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .stock-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+    }
+    .stock-card {
+      background: #1e1e2f;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .stock-card:hover { transform: scale(1.05); }
+    canvas { background: #111; border-radius: 8px; margin-top: 15px; }
+    .admin-controls { margin-top: 20px; }
+    .admin-controls button { background: #f59e0b; }
+    .admin-controls button:hover { background: #d97706; }
   </style>
 </head>
-<body class="min-h-full">
-  <main class="max-w-7xl mx-auto p-4 md:p-6">
-    <!-- LOADING -->
-    <section id="loading" class="panel rounded-2xl p-6 text-center shadow-xl">
-      <h1 class="text-3xl font-extrabold tracking-tight">Loading…</h1>
-      <p id="loading-msg" class="opacity-90 mt-2">Initializing Firebase and fetching data…</p>
-    </section>
+<body>
+  <header>Carpe Diem Stock Simulator</header>
 
-    <!-- LOGIN -->
-    <section id="login" class="hidden">
-      <div class="panel rounded-2xl p-6 shadow-xl">
-        <h2 class="text-3xl font-bold mb-4">Sign in</h2>
-        <form id="login-form" class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm mb-1">Email</label>
-            <input id="email" type="email" class="w-full rounded-lg p-2 text-gray-900" placeholder="name@gsis.ac.in" required />
-          </div>
-          <div>
-            <label class="block text-sm mb-1">Password</label>
-            <input id="password" type="password" class="w-full rounded-lg p-2 text-gray-900" required />
-          </div>
-          <button class="btn btn-primary col-span-full" type="submit">Log in</button>
-        </form>
+  <!-- LOGIN -->
+  <div id="loginSection" class="login-box">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="container hidden">
+    <h2 id="roleHeader"></h2>
+
+    <!-- Stats -->
+    <div class="stats" id="traderStats" style="display:none;">
+      <div>Working Capital: ₹<span id="workingCap">0</span></div>
+      <div>Invested: ₹<span id="investedCap">0</span></div>
+      <div>P/L: <span id="profitLoss">0%</span></div>
+    </div>
+
+    <!-- Stock List -->
+    <h3>Stocks</h3>
+    <div class="stock-list" id="stockList"></div>
+
+    <!-- Stock Details -->
+    <div id="stockDetails" class="hidden">
+      <h3 id="selectedStockName"></h3>
+      <canvas id="priceChart" width="600" height="200"></canvas>
+      <div style="margin-top:10px;">
+        <input type="number" id="quantity" placeholder="Quantity" min="1">
+        <button onclick="buyStock()">Buy</button>
+        <button onclick="sellStock()">Sell</button>
       </div>
-    </section>
-
-    <!-- ADMIN DASHBOARD -->
-    <section id="admin" class="hidden">
-      <header class="panel rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-        <h2 class="text-3xl font-bold">Admin Dashboard</h2>
-        <div class="flex items-center gap-3 text-sm">
-          <span>UID: <b id="admin-uid"></b></span>
-          <button id="logout-admin" class="btn btn-ghost">Log out</button>
-        </div>
-      </header>
-
-      <div class="grid lg:grid-cols-3 gap-4 mt-4">
-        <section class="card rounded-2xl p-5 lg:col-span-2 shadow-lg">
-          <h3 class="text-xl font-semibold mb-3">Stocks</h3>
-          <div id="admin-stocks" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        </section>
-        <aside class="card rounded-2xl p-5 shadow-lg space-y-4">
-          <div>
-            <h3 class="text-xl font-semibold mb-2">Set Starting Funds (All Traders)</h3>
-            <div class="grid grid-cols-[1fr_auto] gap-2">
-              <input id="global-start-amount" type="number" min="0" placeholder="10000" class="rounded-lg p-2 text-gray-900" />
-              <button id="apply-all-funds" class="btn btn-primary">Apply</button>
-            </div>
-            <p class="text-xs text-[var(--muted)] mt-1">Applies to every trader account. No dropdowns.</p>
-          </div>
-          <hr class="border-white/20" />
-          <div>
-            <h3 class="text-xl font-semibold mb-2">Trader Portfolio & History</h3>
-            <select id="admin-trader-select" class="rounded-lg p-2 text-gray-900 w-full"></select>
-            <div id="admin-trader-summary" class="metric rounded-xl p-3 mt-3 text-sm"></div>
-            <div class="mt-3 overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead class="text-left text-[var(--muted)]">
-                  <tr>
-                    <th class="py-1 pr-3">Time</th>
-                    <th class="py-1 pr-3">Action</th>
-                    <th class="py-1 pr-3">Stock</th>
-                    <th class="py-1 pr-3">Qty</th>
-                    <th class="py-1 pr-3">Price</th>
-                    <th class="py-1 pr-3">Cash After</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-trade-history"></tbody>
-              </table>
-            </div>
-          </div>
-        </aside>
+      <div class="admin-controls hidden" id="adminControls">
+        <button onclick="adjustPrice(0.1)">Increase 10%</button>
+        <button onclick="adjustPrice(-0.1)">Decrease 10%</button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <!-- TRADER DASHBOARD -->
-    <section id="trader" class="hidden">
-      <header class="panel rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-        <h2 class="text-3xl font-bold">Trader Dashboard</h2>
-        <div class="flex items-center gap-3 text-sm">
-          <span>UID: <b id="trader-uid"></b></span>
-          <button id="logout-trader" class="btn btn-ghost">Log out</button>
-        </div>
-      </header>
-
-      <!-- Top metrics -->
-      <section class="grid md:grid-cols-3 gap-4 mt-4">
-        <div class="metric rounded-2xl p-4 text-center">
-          <h4>Working Capital</h4>
-          <div class="text-3xl font-extrabold mt-1">$<span id="working-capital">0.00</span></div>
-        </div>
-        <div class="metric rounded-2xl p-4 text-center">
-          <h4>Invested Capital</h4>
-          <div class="text-3xl font-extrabold mt-1">$<span id="investment-capital">0.00</span></div>
-        </div>
-        <div class="metric rounded-2xl p-4 text-center">
-          <h4>Profit / Loss</h4>
-          <div class="text-3xl font-extrabold mt-1"><span id="profit-loss">0.00</span></div>
-        </div>
-      </section>
-
-      <!-- Stocks -->
-      <section class="grid lg:grid-cols-3 gap-4 mt-4">
-        <div class="card rounded-2xl p-5 lg:col-span-2 shadow-lg">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-xl font-semibold">Stocks</h3>
-          </div>
-          <div id="stocks" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-        </div>
-        <div class="card rounded-2xl p-5 shadow-lg">
-          <h3 class="text-xl font-semibold mb-2"><span id="selected-name">Select a stock</span></h3>
-          <div class="bar-graph" id="bar-graph"></div>
-          <div class="grid grid-cols-[auto_auto_1fr_auto_auto] gap-3 items-center mt-3">
-            <label for="qty">Qty</label>
-            <input id="qty" type="number" value="1" min="1" class="rounded-lg p-2 text-gray-900 w-24" />
-            <div></div>
-            <button id="buy" class="btn btn-primary">Buy</button>
-            <button id="sell" class="btn btn-primary">Sell</button>
-            <label class="col-span-full flex items-center gap-2 text-sm mt-2">
-              <input id="auto-sell" type="checkbox" class="h-5 w-5 rounded" /> Auto-sell at/below
-              <input id="auto-sell-price" type="number" step="0.01" min="1" placeholder="Price" class="rounded-lg p-2 text-gray-900 w-32 hidden" />
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <!-- Portfolio -->
-      <section class="card rounded-2xl p-5 mt-4 shadow-lg">
-        <h3 class="text-xl font-semibold mb-2">Your Portfolio</h3>
-        <div id="portfolio" class="space-y-3"></div>
-      </section>
-    </section>
-  </main>
-
-  <!-- ===== App Script ===== -->
+  <!-- FIREBASE + APP -->
   <script type="module">
-    // === Firebase config ===
-    const FIREBASE_CONFIG = {
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+
+    // 🔑 Config
+    const firebaseConfig = {
       apiKey: "AIzaSyC72GZrrjG4UIR3qzDs-I2QWIgSFd4Yehs",
       authDomain: "carpediem-f6948.firebaseapp.com",
       projectId: "carpediem-f6948",
@@ -178,126 +136,134 @@
       messagingSenderId: "705608113463",
       appId: "1:705608113463:web:eb70088734b33486c70eb2"
     };
+
     const APP_ID = "carpe_diem";
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    // Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-    import { getFirestore, collection, doc, getDoc, getDocs, onSnapshot, query, where, setDoc, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+    let currentUser = null;
+    let currentRole = null;
+    let stocks = {};
+    let selectedStock = null;
+    let chartCtx, chartData = [];
 
-    // DOM helpers
-    const $ = (id)=>document.getElementById(id);
-    const ui = { show(which){ ["loading","login","admin","trader"].forEach(x=>$(x).classList.add("hidden")); $(which).classList.remove("hidden"); }, msg(t){ $("loading-msg").textContent=t; } };
-    function fmt(n){ return (+n).toFixed(2); }
-    function alertBox(msg){ const m=document.createElement('div'); m.className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center'; m.innerHTML=`<div class='bg-white text-gray-900 p-6 rounded-xl max-w-sm text-center shadow-2xl'><p class='mb-4'>${msg}</p><button class='btn btn-primary' onclick="this.closest('.inset-0').remove()">OK</button></div>`; document.body.appendChild(m); }
+    // Seed stock list
+    const STOCK_NAMES = [
+      "Reliance Industries", "Tata Consultancy", "Infosys", "HDFC Bank", "ICICI Bank",
+      "State Bank of India", "Bharti Airtel", "HCL Tech", "Asian Paints", "Wipro",
+      "Tata Motors", "Adani Green", "Hindustan Unilever", "Larsen & Toubro", "Bajaj Finance",
+      "Kotak Mahindra Bank", "UltraTech Cement", "NTPC", "JSW Steel", "Tech Mahindra",
+      "Power Grid", "Adani Ports", "Axis Bank", "Maruti Suzuki", "Grasim Industries"
+    ];
 
-    // Firebase init
-    let app, db, auth; try{ app=initializeApp(FIREBASE_CONFIG); db=getFirestore(app); auth=getAuth(app);}catch(e){ ui.msg("Missing Firebase config"); throw e; }
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        currentUser = cred.user;
 
-    // Paths
-    const PATH = {
-      roles: ()=>collection(db, `/artifacts/${APP_ID}/public/data/roles`),
-      stocks: ()=>collection(db, `/artifacts/${APP_ID}/public/data/stocks`),
-      traders: ()=>collection(db, `/artifacts/${APP_ID}/public/data/traders`),
-      traderHistory: (uid)=>collection(db, `/artifacts/${APP_ID}/public/data/traders/${uid}/history`)
-    };
+        const roleRef = doc(db, "artifacts", APP_ID, "public", "data", "roles", currentUser.uid);
+        const roleSnap = await getDoc(roleRef);
+        if (!roleSnap.exists()) {
+          alert("Role not found for this user");
+          return;
+        }
+        currentRole = roleSnap.data().role;
 
-    // State
-    let userId=null, stocks=[], traders={}, roles={}, selectedStock=null, historyUnsub=null;
+        document.getElementById("loginSection").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
+        document.getElementById("roleHeader").innerText = `Welcome, ${currentRole}`;
+        if (currentRole === "trader") document.getElementById("traderStats").style.display = "flex";
 
-    // Renderers
-    function renderStocks(){
-      // trader list
-      const grid=$("stocks"); grid.innerHTML='';
-      stocks.forEach(s=>{
-        const tile=document.createElement('button');
-        tile.className='stock-tile w-full text-left transition';
-        tile.innerHTML=`<div class='flex items-center justify-between'><div><div class='font-semibold tracking-wide'>${s.name}</div><div class='text-sm text-[var(--muted)]'>$${fmt(s.price)}</div></div><div class='text-right'><div class='text-xs text-[var(--muted)]'>Last</div><div class='font-bold'>$${fmt(s.price)}</div></div></div>`;
-        tile.onclick=()=>{ selectedStock=s; $("selected-name").textContent=`${s.name} ($${fmt(s.price)})`; drawBars(s); };
-        grid.appendChild(tile);
+        loadStocks();
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    }
+
+    async function loadStocks() {
+      const stocksRef = collection(db, "artifacts", APP_ID, "public", "data", "stocks");
+      const snap = await getDocs(stocksRef);
+      if (snap.empty) {
+        // Seed 25 stocks with baseline
+        for (let name of STOCK_NAMES) {
+          const stockId = name.replace(/\s+/g, "_").toLowerCase();
+          await setDoc(doc(stocksRef, stockId), { name, baseline: 500 + Math.random()*500, baselineVer: Date.now() });
+        }
+      }
+      const newSnap = await getDocs(stocksRef);
+      newSnap.forEach(d => stocks[d.id] = d.data());
+      renderStockList();
+      startTicker();
+    }
+
+    function renderStockList() {
+      const listDiv = document.getElementById("stockList");
+      listDiv.innerHTML = "";
+      Object.entries(stocks).forEach(([id, s]) => {
+        const card = document.createElement("div");
+        card.className = "stock-card";
+        card.innerHTML = `<strong>${s.name}</strong><br>₹<span id="price-${id}"></span>`;
+        card.onclick = () => openStock(id);
+        listDiv.appendChild(card);
       });
-      // admin preview
-      const adminGrid=$("admin-stocks"); if(adminGrid){ adminGrid.innerHTML=''; stocks.forEach(s=>{ const d=document.createElement('div'); d.className='stock-tile'; d.innerHTML=`<div class='font-semibold'>${s.name}</div><div class='text-sm text-[var(--muted)]'>$${fmt(s.price)}</div>`; adminGrid.appendChild(d); }); }
-      // control dropdown
-      const sel=document.createElement('select');
-      $("stock-control").innerHTML=''; $("stock-control").append(...stocks.map(s=>{ const o=document.createElement('option'); o.value=s.name; o.textContent=s.name; return o; }));
     }
 
-    function drawBars(stock){ const el=$("bar-graph"); el.innerHTML=''; const hist=stock.history||[]; if(!hist.length) return; const max=Math.max(...hist)*1.06, min=Math.min(...hist)*0.94; hist.forEach((p,i)=>{ const up=i>0 && p>=hist[i-1]; const h=((p-min)/(max-min))*100; const bar=document.createElement('div'); bar.className=`bar ${up?"bg-emerald-400":"bg-rose-400"}`; bar.style.height=`${Math.max(8,h)}%`; el.appendChild(bar); }); el.scrollLeft=el.scrollWidth; }
-
-    function calcStats(uid){ const t=traders[uid]||{}; const pf=t.portfolio||{}; let port=0; for(const n in pf){ const s=stocks.find(x=>x.name===n); if(s) port+=(pf[n].quantity||0)*s.price; } const cash=t.cash||0; const initial=t.initialCash||0; const pnl=(port+cash)-initial; return {cash, port, initial, pnl, pnlPct: initial? (pnl/initial*100):0}; }
-
-    function renderTraderTop(){ const {cash,port,initial,pnl,pnlPct}=calcStats(userId); $("working-capital").textContent=fmt(cash); $("investment-capital").textContent=fmt(port); const el=$("profit-loss"); el.textContent=`${pnl>=0?"+":""}${fmt(pnl)} (${fmt(pnlPct)}%)`; el.classList.toggle('text-emerald-300', pnl>=0); el.classList.toggle('text-rose-300', pnl<0); }
-
-    function renderPortfolio(uid){ const root=$("portfolio"); root.innerHTML=''; const t=traders[uid]||{}; const pf=t.portfolio||{}; Object.keys(pf).forEach(n=>{ const q=pf[n].quantity||0; if(q<=0) return; const s=stocks.find(x=>x.name===n); if(!s) return; const d=document.createElement('div'); d.className='flex flex-col sm:flex-row justify-between items-center p-3 rounded-xl metric'; const auto=pf[n].autoSellPrice?`Auto-sell @ $${fmt(pf[n].autoSellPrice)}`:'No auto-sell'; d.innerHTML=`<div><div class='font-semibold'>${n}</div><div class='text-sm text-[var(--muted)]'>Qty ${q} • Value $${fmt(q*s.price)}</div></div><div class='text-sm text-[var(--muted)]'>${auto}</div>`; root.appendChild(d); }); }
-
-    function renderAdminTraderSummary(uid){ const s=$("admin-trader-summary"); if(!uid||!traders[uid]){ s.innerHTML='<span class="text-[var(--muted)]">Select a trader…</span>'; return; } const {cash,port,initial,pnl,pnlPct}=calcStats(uid); s.innerHTML = `<div class='grid grid-cols-2 gap-2 text-center'>
-      <div><div class='text-xs text-[var(--muted)]'>Working</div><div class='text-xl font-bold'>$${fmt(cash)}</div></div>
-      <div><div class='text-xs text-[var(--muted)]'>Invested</div><div class='text-xl font-bold'>$${fmt(port)}</div></div>
-      <div class='col-span-2'><div class='text-xs text-[var(--muted)]'>P/L</div><div class='text-xl font-bold ${pnl>=0?"text-emerald-300":"text-rose-300"}'>${pnl>=0?"+":""}${fmt(pnl)} (${fmt(pnlPct)}%)</div></div>`; }
-
-    // Listeners
-    function listenStocks(){ onSnapshot(PATH.stocks(), snap=>{ stocks=snap.docs.map(d=>({id:d.id,...d.data()})); renderStocks(); if(selectedStock){ const ns=stocks.find(x=>x.name===selectedStock.name); if(ns){selectedStock=ns; drawBars(ns);} } renderTraderTop(); }); }
-    function listenTraders(){ onSnapshot(PATH.traders(), snap=>{ traders={}; snap.docs.forEach(d=>traders[d.id]=d.data()); renderTraderTop(); renderPortfolio(userId); }); }
-    function listenRoles(){ onSnapshot(PATH.roles(), snap=>{ roles={}; snap.docs.forEach(d=>roles[d.id]=d.data()); refreshAdminTraderSelect(); }); }
-
-    function refreshAdminTraderSelect(){ const sel=$("admin-trader-select"); if(!sel) return; sel.innerHTML=''; Object.keys(roles).filter(uid=>roles[uid].role==='trader').forEach(uid=>{ const o=document.createElement('option'); o.value=uid; o.textContent=roles[uid].email||uid; sel.appendChild(o); }); if(sel.value){ renderAdminTraderSummary(sel.value); loadTradeHistory(sel.value); } }
-
-    async function loadTradeHistory(uid){ const body=$("admin-trade-history"); body.innerHTML=''; if(historyUnsub) {historyUnsub(); historyUnsub=null;} const qcol=PATH.traderHistory(uid); const qs=await getDocs(qcol); const rows=[]; qs.forEach(d=>rows.push(d.data())); rows.sort((a,b)=>a.ts-b.ts); rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class='pr-3 py-1'>${new Date(r.ts).toLocaleTimeString()}</td><td class='pr-3 py-1'>${r.action}</td><td class='pr-3 py-1'>${r.stock}</td><td class='pr-3 py-1'>${r.qty}</td><td class='pr-3 py-1'>$${fmt(r.price)}</td><td class='pr-3 py-1'>$${fmt(r.cashAfter)}</td>`; body.appendChild(tr); }); }
-
-    // Auth flow
-    onAuthStateChanged(auth, async(user)=>{
-      if(!user){ ui.show('login'); return; }
-      userId=user.uid;
-      const roleDoc=await getDoc(doc(PATH.roles(), user.uid)); const role=roleDoc.exists()?roleDoc.data().role:null;
-      if(role==='admin'){ $("admin-uid").textContent=user.uid; ui.show('admin'); }
-      else if(role==='trader'){ $("trader-uid").textContent=user.uid; ui.show('trader'); }
-      else{ alertBox('Role missing for this user. Create /roles/'+user.uid); await signOut(auth); ui.show('login'); return; }
-      listenStocks(); listenTraders(); listenRoles(); startFluctuations(); startAutoSell();
-    });
-
-    // Login + logout
-    $("login-form").addEventListener('submit', async(e)=>{ e.preventDefault(); try{ await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value.trim()); }catch(err){ console.error(err); alertBox(err.code==='auth/invalid-credential'? 'Invalid email or password':'Login failed.'); } });
-    $("logout-admin").addEventListener('click', ()=>signOut(auth));
-    $("logout-trader").addEventListener('click', ()=>signOut(auth));
-
-    // Admin: global starting funds (apply to all traders)
-    $("apply-all-funds").addEventListener('click', async()=>{
-      const amt=parseFloat($("global-start-amount").value); if(isNaN(amt)||amt<0) return alertBox('Enter a valid amount.');
-      const traderUIDs = Object.keys(roles).filter(uid=>roles[uid].role==='trader');
-      for(const uid of traderUIDs){ await setDoc(doc(PATH.traders(), uid), { cash: amt, initialCash: amt }, { merge:true }); }
-      alertBox('Starting funds updated for '+traderUIDs.length+' traders.');
-    });
-
-    // Admin: select trader to view
-    $("admin-trader-select").addEventListener('change', (e)=>{ const uid=e.target.value; renderAdminTraderSummary(uid); loadTradeHistory(uid); });
-
-    // Trader interactions
-    $("auto-sell").addEventListener('change', e=> $("auto-sell-price").classList.toggle('hidden', !e.target.checked));
-
-    async function buySell(kind){ if(!selectedStock||!userId) return; const q=parseInt($("qty").value,10); if(isNaN(q)||q<=0) return alertBox('Enter a valid quantity.'); const ref=doc(PATH.traders(), userId); const snap=await getDoc(ref); const data=snap.data()||{}; data.portfolio=data.portfolio||{}; data.cash=data.cash||0; if(kind==='buy'){ const cost=q*selectedStock.price; if(data.cash<cost) return alertBox('Not enough cash.'); data.cash-=cost; const cur=data.portfolio[selectedStock.name]?.quantity||0; data.portfolio[selectedStock.name]={ quantity:cur+q, autoSellPrice:($("auto-sell").checked && !isNaN(parseFloat($("auto-sell-price").value)))? parseFloat($("auto-sell-price").value): (data.portfolio[selectedStock.name]?.autoSellPrice||null) }; } else { const owned=data.portfolio[selectedStock.name]?.quantity||0; if(owned<q) return alertBox('Not enough shares.'); data.cash += q*selectedStock.price; data.portfolio[selectedStock.name].quantity = owned - q; if(data.portfolio[selectedStock.name].quantity<=0) delete data.portfolio[selectedStock.name]; }
-      await setDoc(ref, data);
-      const stats=calcStats(userId); await addDoc(PATH.traderHistory(userId), { ts:Date.now(), action:kind, stock:selectedStock.name, qty:q, price:selectedStock.price, cashAfter:stats.cash });
-      alertBox(kind==='buy'?`Bought ${q} ${selectedStock.name}`:`Sold ${q} ${selectedStock.name}`);
+    function calcPrice(stock, t) {
+      const base = stock.baseline;
+      const seed = Math.sin((t/4000) + stock.baselineVer/10000);
+      const rand = (seed * 10); // ±10
+      return Math.max(1, (base + rand).toFixed(2));
     }
-    $("buy").addEventListener('click', ()=>buySell('buy'));
-    $("sell").addEventListener('click', ()=>buySell('sell'));
 
-    // Background tasks
-    let tick=null, autos=null;
-    function startFluctuations(){ if(tick) clearInterval(tick); // every 2s for balanced difficulty
-      tick=setInterval(async()=>{ if(!stocks.length) return; for(const s of stocks){ const change=(Math.random()-0.5)*0.04; // ±2%
-          const price=Math.max(1, +(s.price*(1+change)).toFixed(2)); const hist=[...(s.history||[]), price]; if(hist.length>30) hist.shift(); await setDoc(doc(PATH.stocks(), s.id), { price, history:hist }, { merge:true }); } }, 2000);
+    function startTicker() {
+      setInterval(() => {
+        const t = Date.now();
+        for (let [id, s] of Object.entries(stocks)) {
+          const p = calcPrice(s, t);
+          const el = document.getElementById("price-"+id);
+          if (el) el.textContent = p;
+          if (selectedStock===id) updateChart(p);
+        }
+      }, 1000); // smooth refresh, but drift is 4s cycle
     }
-    function startAutoSell(){ if(autos) clearInterval(autos); autos=setInterval(async()=>{ if(!userId||!traders[userId]) return; const t=traders[userId]; let changed=false; for(const name in (t.portfolio||{})){ const pos=t.portfolio[name]; const s=stocks.find(x=>x.name===name); if(!s) continue; if(pos.autoSellPrice && s.price <= pos.autoSellPrice && pos.quantity>0){ t.cash=(t.cash||0)+pos.quantity*s.price; delete t.portfolio[name]; changed=true; alertBox(`Auto-sold all ${pos.quantity} ${name} at $${fmt(s.price)}`); await addDoc(PATH.traderHistory(userId), { ts:Date.now(), action:'auto-sell', stock:name, qty:pos.quantity, price:s.price, cashAfter:t.cash }); } } if(changed) await setDoc(doc(PATH.traders(), userId), t); }, 5000); }
 
-    // Bootstrap: seed 25 Indian stocks if empty
-    (async function init(){ const sSnap=await getDocs(PATH.stocks()); if(sSnap.empty){ const india=[
-      'Reliance Industries','TCS','HDFC Bank','ICICI Bank','Infosys','SBI','Bharti Airtel','ITC','Hindustan Unilever','HCL Technologies','Wipro','Larsen & Toubro','Axis Bank','Kotak Mahindra Bank','Bajaj Finance','Tata Motors','Maruti Suzuki','NTPC','Power Grid','UltraTech Cement','Sun Pharma','Asian Paints','Adani Enterprises','Adani Ports','Tech Mahindra'
-    ]; for(const name of india){ const price=+(100+Math.random()*900).toFixed(2); await addDoc(PATH.stocks(), { name, price, history:[price] }); } }
-      ui.show('login');
-    })();
+    function openStock(id) {
+      selectedStock = id;
+      const s = stocks[id];
+      document.getElementById("stockDetails").classList.remove("hidden");
+      document.getElementById("selectedStockName").innerText = s.name;
+      chartCtx = document.getElementById("priceChart").getContext("2d");
+      chartData = [];
+      if (currentRole==="admin") document.getElementById("adminControls").classList.remove("hidden");
+    }
+
+    function updateChart(price) {
+      chartData.push(price);
+      if (chartData.length > 50) chartData.shift();
+      chartCtx.clearRect(0,0,600,200);
+      chartCtx.beginPath();
+      chartCtx.strokeStyle="#8b5cf6";
+      chartCtx.moveTo(0,200-chartData[0]);
+      chartData.forEach((v,i)=>chartCtx.lineTo(i*12,200-(v/10)));
+      chartCtx.stroke();
+    }
+
+    async function adjustPrice(factor) {
+      if (!selectedStock) return;
+      const s = stocks[selectedStock];
+      const newBase = s.baseline * (1+factor);
+      await updateDoc(doc(db, "artifacts", APP_ID, "public", "data", "stocks", selectedStock), {
+        baseline: newBase, baselineVer: Date.now()
+      });
+      s.baseline = newBase;
+      s.baselineVer = Date.now();
+    }
+
+    function buyStock(){ alert("Buy not fully implemented in this demo."); }
+    function sellStock(){ alert("Sell not fully implemented in this demo."); }
   </script>
 </body>
 </html>
-
