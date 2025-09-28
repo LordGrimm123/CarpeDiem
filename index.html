@@ -11,8 +11,8 @@
       --card:#1b294a;
       --accent:#4cafef;
       --accent-2:#357abd;
-      --text:#ffffff;     /* WHITE */
-      --muted:#eef4ff;    /* near-white */
+      --text:#ffffff;
+      --muted:#eef4ff;
       --muted-2:#d7e3ff;
       --good:#3ddc97;
       --bad:#ff6b6b;
@@ -302,7 +302,8 @@
     /***** State *****/
     let me = null, myRole = null;
     let selectedId = null;
-    let stocks = {};    // id -> { id, name, baseline, baselineVer, defaultBaseline, osc }
+    // id -> { id, name, baseline, price, defaultBaseline, lastJumpAt }
+    let stocks = {};
     let myTrader = null;
     let series = [];
     let chartCtx = $("chart").getContext("2d");
@@ -316,47 +317,24 @@
       "Power Grid","Adani Ports","Axis Bank","Maruti Suzuki","Grasim Industries"
     ];
 
-    /***** Pricing model (up/down, smooth, deterministic) *****/
-    const TICK_MS = 5000;             // new target every 5s
-    const AMP1    = 0.006;            // sin #1 amplitude (~0.6%)
-    const AMP2    = 0.004;            // sin #2 amplitude (~0.4%)
-    const NOISE   = 0.0035;           // small zero-mean noise (~0.35%)
-    function hashToUnit(str){
-      let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)/4294967295;
+    /***** PRICING: step jumps every 4s by ±1–3% *****/
+    const TICK_MS = 4000;
+    function clamp(n){ return Math.max(1, Number.isFinite(n)? n : 0); }
+    function currentPriceFor(stock){
+      if (!stock) return 0;
+      if (Number.isFinite(stock.price)) return stock.price;
+      const base = Number.isFinite(stock.baseline) ? stock.baseline : (stock.defaultBaseline||500);
+      return base;
     }
-    function ensureOsc(s){
-      if (s.osc) return;
-      const u1 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|p1`);
-      const u2 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|p2`);
-      const u3 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|w1`);
-      const u4 = hashToUnit(`${APP_ID}|${s.id}|${s.baselineVer||0}|w2`);
-      s.osc = {
-        phase1: 2*Math.PI*u1,
-        phase2: 2*Math.PI*u2,
-        w1: 2*Math.PI/(6 + Math.floor(u3*6)),   // periods 6..11 buckets
-        w2: 2*Math.PI/(10+ Math.floor(u4*8))    // periods 10..17 buckets
-      };
+    function jumpOnce(stock){
+      const base = Number.isFinite(stock.baseline) ? stock.baseline : (stock.defaultBaseline||500);
+      // random percent ∈ [1%, 3%] with random sign
+      const mag = 0.01 + Math.random()*0.02;
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      const next = base * (1 + sign*mag);
+      stock.price = Math.round(next * 100) / 100;
+      stock.lastJumpAt = performance.now();
     }
-    function targetForBucket(stock, bucket){
-      const base = Number.isFinite(stock.baseline) ? stock.baseline : stock.defaultBaseline || 500;
-      ensureOsc(stock);
-      const { phase1, phase2, w1, w2 } = stock.osc;
-      const mix = AMP1*Math.sin(w1*bucket + phase1) + AMP2*Math.sin(w2*bucket + phase2);
-      const n = (hashToUnit(`${APP_ID}|${stock.id}|${stock.baselineVer||0}|${bucket}|noise`) - 0.5) * 2 * NOISE;
-      return base * (1 + mix + n);
-    }
-    function easeInOutQuad(x){ return x<.5 ? 2*x*x : -1+(4-2*x)*x; }
-    function smoothPriceFor(stock, t){
-      const t0 = stock.baselineVer || 0;
-      const bucket = Math.floor((t - t0)/TICK_MS);
-      const frac   = ((t - t0) % TICK_MS) / TICK_MS;
-      const a = targetForBucket(stock, bucket);
-      const b = targetForBucket(stock, bucket+1);
-      return a + (b - a) * easeInOutQuad(frac);
-    }
-    function fmt(n){ return (+n).toLocaleString("en-IN",{maximumFractionDigits:2,minimumFractionDigits:2}); }
-    function setText(el, val){ if(el) el.textContent = val; }
-    function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"_"); }
 
     /***** Auth & Roles *****/
     onAuthStateChanged(auth, async (user)=>{
@@ -388,6 +366,11 @@
       startAnimationLoop();
       attachTraderDoc();
       if (myRole==="admin") loadRankingsLoop();
+
+      // start global jump timer
+      setInterval(()=> {
+        Object.values(stocks).forEach(s => jumpOnce(s));
+      }, TICK_MS);
     });
 
     function showLogin(msg){
@@ -417,7 +400,7 @@
     async function bootstrapStocks(){
       SEED_STOCKS.forEach((name)=>{
         const id = slug(name);
-        if (!stocks[id]) stocks[id] = { id, name, defaultBaseline: +(300 + Math.random()*900).toFixed(2), baseline: undefined, baselineVer: 0 };
+        if (!stocks[id]) stocks[id] = { id, name, defaultBaseline: +(300 + Math.random()*900).toFixed(2) };
       });
 
       const col = collection(db,"artifacts",APP_ID,"public","data","stocks");
@@ -438,13 +421,15 @@
           const data = d.data()||{};
           const id = d.id;
           const prev = stocks[id] || {};
+          const base = Number(data.baseline);
+          const priceInit = Number.isFinite(prev.price) ? prev.price : (Number.isFinite(base) ? base : prev.defaultBaseline);
           stocks[id] = {
             id,
             name: data.name || prev.name || id,
-            baseline: Number(data.baseline),
-            baselineVer: Number(data.baselineVer)||0,
+            baseline: Number.isFinite(base) ? base : prev.baseline,
+            price: clamp(priceInit),
             defaultBaseline: prev.defaultBaseline || +(300 + Math.random()*900).toFixed(2),
-            osc: prev.osc   // keep existing oscillation parameters
+            lastJumpAt: prev.lastJumpAt || 0
           };
         });
         renderStockTiles();
@@ -454,9 +439,8 @@
 
     function renderStockTiles(){
       stockList.innerHTML = "";
-      const t = performance.now();
       Object.values(stocks).forEach(s => {
-        const price = smoothPriceFor(s, t);
+        const price = currentPriceFor(s);
         const tile = document.createElement("button");
         tile.className = "tile";
         tile.innerHTML = `<div class="name">${s.name}</div><div class="price">₹ <span id="p-${s.id}">${fmt(price)}</span></div>`;
@@ -474,29 +458,25 @@
       raiseBtn.disabled = lowerBtn.disabled = (myRole!=="admin");
     }
 
-    // Admin ±10% with optimistic update so UI changes instantly
+    // Admin ±10% with immediate visible effect
     raiseBtn?.addEventListener("click", ()=> adjustSelected( 0.10));
     lowerBtn?.addEventListener("click", ()=> adjustSelected(-0.10));
     async function adjustSelected(delta){
       if(!selectedId || myRole!=="admin") return;
       const s = stocks[selectedId];
       const ref = doc(db,"artifacts",APP_ID,"public","data","stocks", selectedId);
-      const base = Number.isFinite(s.baseline) ? s.baseline : s.defaultBaseline;
+      const base = Number.isFinite(s.baseline) ? s.baseline : (s.defaultBaseline||500);
       const newBase = +(base * (1+delta)).toFixed(2);
-      const ver = Date.now();
 
-      // optimistic local update (so tiles/graph move immediately)
+      // optimistic local update (so tiles/graph reflect immediately)
       s.baseline = newBase;
-      s.baselineVer = ver;
-      s.osc = null;   // reset oscillation phases on baseline change
+      // also snap current displayed price to new baseline for clarity
+      s.price = newBase;
       stocks[selectedId] = s;
 
-      // push to Firestore (snapshot will confirm)
       try{
-        await updateDoc(ref, { baseline:newBase, baselineVer: ver });
-      }catch(e){
-        console.error(e);
-      }
+        await updateDoc(ref, { baseline:newBase, baselineVer: Date.now() });
+      }catch(e){ console.error(e); }
     }
 
     /***** Trader doc + Auto-sell *****/
@@ -543,7 +523,7 @@
       const autos = myTrader.autos || {};
       for (const [sid, rule] of Object.entries(autos)){
         const st = stocks[sid]; if (!st) continue;
-        const price = smoothPriceFor(st, performance.now());
+        const price = currentPriceFor(st);
         if (price >= rule.price){
           const ref = traderRef(me.uid);
           const snap = await getDoc(ref);
@@ -569,11 +549,10 @@
     async function portfolioAndStats(uid){
       const s = await getDoc(traderRef(uid));
       const data = s.exists()? s.data(): { cash:0, initialCash:0, portfolio:{} };
-      const t = performance.now();
       let invested = 0;
       Object.entries(data.portfolio||{}).forEach(([sid,pos])=>{
         const st = stocks[sid]; if (!st) return;
-        invested += (pos.quantity||0) * smoothPriceFor(st, t);
+        invested += (pos.quantity||0) * currentPriceFor(st);
       });
       const working = +data.cash || 0;
       const initial = +data.initialCash || 0;
@@ -600,7 +579,7 @@
       if (!selectedId){ tradeMsg.textContent="Select a stock first."; return; }
       const q = Math.max(1, parseInt(qtyEl.value||"1",10));
       const st = stocks[selectedId];
-      const price = smoothPriceFor(st, performance.now());
+      const price = currentPriceFor(st);
       const ref = traderRef(me.uid);
       const snap = await getDoc(ref);
       const t = snap.exists()? snap.data(): { cash:100000, initialCash:100000, portfolio:{} };
@@ -652,7 +631,7 @@
           pfSummary.textContent = `Working: ₹${fmt(stats.working)}  •  Invested: ₹${fmt(stats.invested)}  •  P/L: ${stats.pl>=0?'+':''}${fmt(stats.pl)} (${fmt(stats.plPct)}%)`;
           pfTable.innerHTML = "";
           Object.entries(stats.data.portfolio||{}).forEach(([sid,pos])=>{
-            const p = smoothPriceFor(stocks[sid], performance.now());
+            const p = currentPriceFor(stocks[sid]);
             const val = p * (pos.quantity||0);
             const tr = document.createElement("tr"); tr.className="data";
             tr.innerHTML = `<td>${stocks[sid]?.name||sid}</td><td>${pos.quantity||0}</td><td>₹ ${fmt(p)}</td><td>₹ ${fmt(val)}</td>`;
@@ -664,10 +643,15 @@
     }
     function loadRankingsLoop(){ loadRankings(); setInterval(loadRankings, 6000); }
 
-    /***** Animation: prices, chart, autos, metrics *****/
+    /***** Animation: update tiles/price text, stream chart, autos, metrics *****/
+    function fmt(n){ return (+n).toLocaleString("en-IN",{maximumFractionDigits:2,minimumFractionDigits:2}); }
+    function setText(el, val){ if(el) el.textContent = val; }
+    function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"_"); }
+
     function drawChart(){
       const w = chartEl.width, h = chartEl.height;
-      chartCtx.clearRect(0,0,w,h);
+      const ctx = chartCtx;
+      ctx.clearRect(0,0,w,h);
       if (!series.length) return;
       let min = Math.min(...series), max = Math.max(...series);
       if (min === max){ min -= 1; max += 1; }
@@ -677,22 +661,26 @@
         const norm = (v - min) / (max - min);
         const barH = Math.max(2, Math.round(norm * (h - 8)));
         const x = i * xStep;
-        chartCtx.fillStyle = i>0 && v>=series[i-1] ? "#3ddc97" : "#ff6b6b";
-        chartCtx.fillRect(x, h - barH, xStep-1, barH);
+        ctx.fillStyle = i>0 && v>=series[i-1] ? "#3ddc97" : "#ff6b6b";
+        ctx.fillRect(x, h - barH, xStep-1, barH);
       }
     }
+
     function startAnimationLoop(){
       let last = performance.now();
       function tick(now){
-        const t = now;
         if (now - last > 100){
           last = now;
+
+          // Update tiles
           Object.values(stocks).forEach(s=>{
             const el = document.getElementById(`p-${s.id}`);
-            if (el) el.textContent = fmt(smoothPriceFor(s, t));
+            if (el) el.textContent = fmt(currentPriceFor(s));
           });
+
+          // Selected stock details & streaming chart
           if (selectedId && stocks[selectedId]){
-            const p = smoothPriceFor(stocks[selectedId], t);
+            const p = currentPriceFor(stocks[selectedId]);
             detailPrice.textContent = `₹ ${fmt(p)}`;
             if (now - lastSampleTime > 200){
               lastSampleTime = now;
@@ -701,6 +689,7 @@
               drawChart();
             }
           }
+
           if (myRole==="trader"){ refreshMetrics(); checkAutoSells(); }
         }
         requestAnimationFrame(tick);
