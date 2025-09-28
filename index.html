@@ -1,134 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carpe Diem Stock Simulator</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carpe Diem – Stock Simulator</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #0d0d0d;
-      color: #f0f0f0;
+    :root{
+      --bg:#0b132b;          /* deep navy */
+      --panel:#14213d;       /* dark blue */
+      --card:#1f2a48;        /* slate blue */
+      --accent:#4cafef;      /* bright blue */
+      --accent-2:#357abd;    /* darker blue */
+      --text:#eaf2ff;        /* light text */
+      --muted:#a7b6d5;       /* muted text */
+      --good:#38d39f;        /* green */
+      --bad:#ff6b6b;         /* red */
+      --border:#ffffff1a;
     }
-    header {
-      background: linear-gradient(90deg, #1a1a40, #3b0a45);
-      color: white;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: bold;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
+      background:var(--bg); color:var(--text);
     }
-    .container {
-      padding: 20px;
+    header{
+      background:linear-gradient(90deg,#0e1a34,#18335f);
+      padding:14px 16px; text-align:center; font-weight:800; letter-spacing:.3px;
+      box-shadow:0 2px 14px #0008;
     }
-    .hidden { display: none; }
-    .login-box {
-      max-width: 350px;
-      margin: 120px auto;
-      background: #1a1a1a;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
-      text-align: center;
+    .wrap{max-width:1160px;margin:24px auto;padding:0 16px}
+    .hidden{display:none !important}
+    .panel{
+      background:var(--panel); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 24px #0006;
     }
-    input {
-      width: 90%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 6px;
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 4px 18px #0005;
     }
-    button {
-      padding: 10px 20px;
-      margin: 6px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      background: #8b5cf6;
-      color: white;
-      font-weight: bold;
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:10px 14px; border-radius:10px; border:1px solid transparent;
+      font-weight:700; cursor:pointer; transition:.18s ease;
     }
-    button:hover { background: #6d28d9; }
-    .stats {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 20px;
-      background: #1e1e2f;
-      padding: 10px;
-      border-radius: 10px;
+    .btn-primary{ background:var(--accent); color:#041426 }
+    .btn-primary:hover{ background:var(--accent-2) }
+    .btn-ghost{ background:transparent; border-color:var(--border); color:var(--text) }
+    .btn-ghost:hover{ background:#ffffff0e }
+    /* Login */
+    .login-shell{ min-height:70vh; display:grid; place-items:center; }
+    .login-box{ width:min(480px,100%); padding:28px }
+    .input{
+      width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:#0e1a34; color:var(--text);
     }
-    .stock-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 15px;
+    .input::placeholder{ color:#99a7c7 }
+    label{ font-size:.9rem; color:var(--muted); margin-bottom:6px; display:inline-block }
+    /* Grid */
+    .grid{ display:grid; gap:16px }
+    .grid-3{ grid-template-columns:repeat(3,1fr) }
+    @media (max-width:960px){ .grid-3{ grid-template-columns:repeat(2,1fr) } }
+    @media (max-width:640px){ .grid-3{ grid-template-columns:1fr } }
+    /* Stock tiles */
+    .tile{
+      padding:12px; border-radius:12px; border:1px solid var(--border); background:#0f1c37;
+      cursor:pointer; transition:transform .12s ease, border-color .12s ease;
     }
-    .stock-card {
-      background: #1e1e2f;
-      padding: 10px;
-      border-radius: 8px;
-      text-align: center;
-      cursor: pointer;
-      transition: transform 0.2s;
+    .tile:hover{ transform:translateY(-1px); border-color:#ffffff33 }
+    .tile .name{ font-weight:700 }
+    .tile .price{ color:var(--muted); margin-top:2px }
+    /* Metrics row */
+    .metrics{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px }
+    @media (max-width:700px){ .metrics{ grid-template-columns:1fr } }
+    .metric{
+      padding:14px; border-radius:12px; border:1px solid var(--border); background:#0f1c37; text-align:center;
     }
-    .stock-card:hover { transform: scale(1.05); }
-    canvas { background: #111; border-radius: 8px; margin-top: 15px; }
-    .admin-controls { margin-top: 20px; }
-    .admin-controls button { background: #f59e0b; }
-    .admin-controls button:hover { background: #d97706; }
+    .metric .label{ font-size:.8rem; color:var(--muted); letter-spacing:.02em }
+    .metric .value{ font-size:1.6rem; font-weight:800; margin-top:6px }
+    /* Details */
+    .details{ display:grid; grid-template-columns:2fr 1fr; gap:16px }
+    @media (max-width:900px){ .details{ grid-template-columns:1fr } }
+    canvas{ width:100%; height:220px; background:#0b1730; border:1px solid var(--border); border-radius:12px }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .spacer{ flex:1 }
+    .muted{ color:var(--muted) }
+    hr.sep{ border:none; height:1px; background:var(--border); margin:10px 0 }
+    small.err{ color:#ff9c9c }
   </style>
 </head>
 <body>
-  <header>Carpe Diem Stock Simulator</header>
+  <header>Carpe Diem – Stock Simulator</header>
 
-  <!-- LOGIN -->
-  <div id="loginSection" class="login-box">
-    <h2>Login</h2>
-    <input type="email" id="email" placeholder="Email"><br>
-    <input type="password" id="password" placeholder="Password"><br>
-    <button onclick="login()">Login</button>
-  </div>
+  <main class="wrap">
+    <!-- LOGIN -->
+    <section id="loginSection" class="panel login-shell">
+      <form id="loginForm" class="login-box card">
+        <h2 style="margin:0 0 14px 0">Sign in</h2>
+        <div class="grid">
+          <div>
+            <label for="email">Email</label>
+            <input id="email" type="email" class="input" placeholder="name@gsis.ac.in" required />
+          </div>
+          <div>
+            <label for="password">Password</label>
+            <input id="password" type="password" class="input" placeholder="••••••••" required />
+          </div>
+          <div class="row" style="margin-top:4px">
+            <button id="loginBtn" class="btn btn-primary" type="submit">Log in</button>
+            <span id="loginError" class="muted" style="margin-left:8px"></span>
+          </div>
+        </div>
+      </form>
+    </section>
 
-  <!-- DASHBOARD -->
-  <div id="dashboard" class="container hidden">
-    <h2 id="roleHeader"></h2>
-
-    <!-- Stats -->
-    <div class="stats" id="traderStats" style="display:none;">
-      <div>Working Capital: ₹<span id="workingCap">0</span></div>
-      <div>Invested: ₹<span id="investedCap">0</span></div>
-      <div>P/L: <span id="profitLoss">0%</span></div>
-    </div>
-
-    <!-- Stock List -->
-    <h3>Stocks</h3>
-    <div class="stock-list" id="stockList"></div>
-
-    <!-- Stock Details -->
-    <div id="stockDetails" class="hidden">
-      <h3 id="selectedStockName"></h3>
-      <canvas id="priceChart" width="600" height="200"></canvas>
-      <div style="margin-top:10px;">
-        <input type="number" id="quantity" placeholder="Quantity" min="1">
-        <button onclick="buyStock()">Buy</button>
-        <button onclick="sellStock()">Sell</button>
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="hidden">
+      <div class="panel" style="padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <strong id="roleHeader">Welcome</strong>
+        <span class="spacer"></span>
+        <button id="logoutBtn" class="btn btn-ghost">Log out</button>
       </div>
-      <div class="admin-controls hidden" id="adminControls">
-        <button onclick="adjustPrice(0.1)">Increase 10%</button>
-        <button onclick="adjustPrice(-0.1)">Decrease 10%</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- FIREBASE + APP -->
+      <!-- Trader metrics -->
+      <div id="traderMetrics" class="metrics" style="margin:16px 0" hidden>
+        <div class="metric">
+          <div class="label">Working Capital</div>
+          <div class="value">₹<span id="workingCap">0.00</span></div>
+        </div>
+        <div class="metric">
+          <div class="label">Invested Capital</div>
+          <div class="value">₹<span id="investedCap">0.00</span></div>
+        </div>
+        <div class="metric">
+          <div class="label">Profit / Loss</div>
+          <div class="value" id="profitLoss">0.00%</div>
+        </div>
+      </div>
+
+      <!-- Stocks -->
+      <div class="panel" style="padding:16px">
+        <div class="row" style="margin-bottom:10px">
+          <h3 style="margin:0">Stocks</h3>
+          <span class="muted">Live prices update smoothly every 5s</span>
+          <span class="spacer"></span>
+        </div>
+        <div id="stockList" class="grid grid-3"></div>
+      </div>
+
+      <!-- Details + Actions -->
+      <section class="details" style="margin-top:16px">
+        <div class="panel" style="padding:16px">
+          <div class="row">
+            <h3 id="detailName" style="margin:0">Select a stock</h3>
+            <span class="spacer"></span>
+            <div id="detailPrice" class="muted"></div>
+          </div>
+          <canvas id="chart" width="900" height="220"></canvas>
+          <div class="row" style="margin-top:10px">
+            <label for="qty" class="muted">Qty</label>
+            <input id="qty" class="input" type="number" min="1" value="1" style="width:120px" />
+            <button id="buyBtn" class="btn btn-primary">Buy</button>
+            <button id="sellBtn" class="btn btn-ghost">Sell</button>
+            <span id="tradeMsg" class="muted"></span>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:16px">
+          <h3 style="margin-top:0">Admin Controls</h3>
+          <div class="muted" id="adminHint">Only visible for admins</div>
+          <div id="adminControls" class="hidden">
+            <div class="row">
+              <label class="muted">Adjust selected stock</label>
+            </div>
+            <div class="row">
+              <button id="raiseBtn" class="btn btn-primary">Increase 10%</button>
+              <button id="lowerBtn" class="btn btn-ghost">Decrease 10%</button>
+            </div>
+            <hr class="sep" />
+            <div class="row">
+              <label class="muted">Set starting funds for ALL traders</label>
+            </div>
+            <div class="row">
+              <input id="allFunds" class="input" type="number" min="0" placeholder="e.g. 100000" style="width:180px" />
+              <button id="applyFundsBtn" class="btn btn-primary">Apply</button>
+              <span id="fundsMsg" class="muted"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- APP (Firebase + logic) -->
   <script type="module">
+    /***** Firebase SDK *****/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+    import {
+      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs,
+      onSnapshot, query, where
+    } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-    // 🔑 Config
-    const firebaseConfig = {
+    const FIREBASE_CONFIG = {
       apiKey: "AIzaSyC72GZrrjG4UIR3qzDs-I2QWIgSFd4Yehs",
       authDomain: "carpediem-f6948.firebaseapp.com",
       projectId: "carpediem-f6948",
@@ -136,134 +208,362 @@
       messagingSenderId: "705608113463",
       appId: "1:705608113463:web:eb70088734b33486c70eb2"
     };
-
     const APP_ID = "carpe_diem";
-    const app = initializeApp(firebaseConfig);
+    const app = initializeApp(FIREBASE_CONFIG);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let currentUser = null;
-    let currentRole = null;
-    let stocks = {};
-    let selectedStock = null;
-    let chartCtx, chartData = [];
+    /***** Elements *****/
+    const $ = (id)=>document.getElementById(id);
+    const loginSection = $("loginSection");
+    const loginForm    = $("loginForm");
+    const loginBtn     = $("loginBtn");
+    const loginError   = $("loginError");
 
-    // Seed stock list
-    const STOCK_NAMES = [
-      "Reliance Industries", "Tata Consultancy", "Infosys", "HDFC Bank", "ICICI Bank",
-      "State Bank of India", "Bharti Airtel", "HCL Tech", "Asian Paints", "Wipro",
-      "Tata Motors", "Adani Green", "Hindustan Unilever", "Larsen & Toubro", "Bajaj Finance",
-      "Kotak Mahindra Bank", "UltraTech Cement", "NTPC", "JSW Steel", "Tech Mahindra",
-      "Power Grid", "Adani Ports", "Axis Bank", "Maruti Suzuki", "Grasim Industries"
+    const dashboard    = $("dashboard");
+    const roleHeader   = $("roleHeader");
+    const logoutBtn    = $("logoutBtn");
+
+    const traderMetrics = $("traderMetrics");
+    const workingCapEl  = $("workingCap");
+    const investedCapEl = $("investedCap");
+    const profitLossEl  = $("profitLoss");
+
+    const stockList = $("stockList");
+    const detailName  = $("detailName");
+    const detailPrice = $("detailPrice");
+    const chartEl     = $("chart");
+    const qtyEl       = $("qty");
+    const tradeMsg    = $("tradeMsg");
+
+    const adminControls = $("adminControls");
+    const adminHint     = $("adminHint");
+    const raiseBtn      = $("raiseBtn");
+    const lowerBtn      = $("lowerBtn");
+    const allFunds      = $("allFunds");
+    const applyFundsBtn = $("applyFundsBtn");
+    const fundsMsg      = $("fundsMsg");
+
+    const buyBtn  = $("buyBtn");
+    const sellBtn = $("sellBtn");
+
+    /***** State *****/
+    let me = null, myRole = null;
+    let selectedId = null;
+    let stocks = {};    // id -> { name, baseline, baselineVer }
+    let series = [];    // chart values for selected stock (smoothed)
+    let chartCtx = chartEl.getContext("2d");
+    let lastSampleTime = 0;
+
+    // 25 Indian stocks
+    const SEED_STOCKS = [
+      "Reliance Industries","TCS","Infosys","HDFC Bank","ICICI Bank",
+      "SBI","Bharti Airtel","HCL Technologies","Asian Paints","Wipro",
+      "Tata Motors","Adani Enterprises","Hindustan Unilever","Larsen & Toubro","Bajaj Finance",
+      "Kotak Mahindra Bank","UltraTech Cement","NTPC","JSW Steel","Tech Mahindra",
+      "Power Grid","Adani Ports","Axis Bank","Maruti Suzuki","Grasim Industries"
     ];
 
-    async function login() {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-      try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        currentUser = cred.user;
+    /***** Helpers *****/
+    const TICK_MS = 5000;       // prices “target” change every 5s
+    const SIGMA   = 0.02;       // ±2% around baseline
+    function hashToUnit(str){
+      let h = 2166136261 >>> 0; // FNV-1a
+      for(let i=0;i<str.length;i++){
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return (h >>> 0) / 4294967295;
+    }
+    function targetFor(stockId, baseline, baselineVer, bucket){
+      // Two hashes → average → center around 0 → scale by SIGMA
+      const u  = hashToUnit(`${APP_ID}|${stockId}|${baselineVer}|${bucket}`);
+      const v  = hashToUnit(`${APP_ID}|${stockId}|${baselineVer}|${bucket}|x`);
+      const z  = ((u + v)/2) - 0.5; // [-0.5,0.5]
+      const pct= z * 2 * SIGMA;     // ~[-SIGMA, +SIGMA]
+      return baseline * (1 + pct);
+    }
+    function smoothPriceFor(stock, t){
+      const { baseline, baselineVer } = stock;
+      const bucket = Math.floor(t / TICK_MS);
+      const frac   = (t % TICK_MS) / TICK_MS;
+      const ease   = frac<.5 ? 2*frac*frac : -1+(4-2*frac)*frac; // easeInOutQuad
+      const a = targetFor(stock.id, baseline, baselineVer, bucket);
+      const b = targetFor(stock.id, baseline, baselineVer, bucket+1);
+      return a + (b - a) * ease;
+    }
+    function fmt(n){ return (+n).toLocaleString("en-IN",{maximumFractionDigits:2,minimumFractionDigits:2}); }
+    function setText(el, val){ if(el) el.textContent = val; }
 
-        const roleRef = doc(db, "artifacts", APP_ID, "public", "data", "roles", currentUser.uid);
-        const roleSnap = await getDoc(roleRef);
-        if (!roleSnap.exists()) {
-          alert("Role not found for this user");
-          return;
+    /***** Auth & Roles *****/
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ showLogin(); return; }
+      me = user;
+
+      // try roles/<uid>, fallback to where("email"==user.email)
+      const roleDoc = await getDoc(doc(db,"artifacts",APP_ID,"public","data","roles", user.uid));
+      if (roleDoc.exists()){
+        myRole = roleDoc.data().role;
+      } else {
+        const rolesCol = collection(db,"artifacts",APP_ID,"public","data","roles");
+        const q = query(rolesCol, where("email","==", user.email));
+        const snap = await getDocs(q);
+        myRole = (!snap.empty) ? (snap.docs[0].data().role) : null;
+      }
+
+      if(!myRole){ showLogin("Role not found. Create /roles/<UID> with {email, role}."); return; }
+
+      roleHeader.textContent = `Welcome, ${myRole}`;
+      adminControls.classList.toggle("hidden", myRole!=="admin");
+      adminHint.classList.toggle("hidden", myRole==="admin");
+      if(myRole==="trader") traderMetrics.hidden = false;
+
+      loginSection.classList.add("hidden");
+      dashboard.classList.remove("hidden");
+
+      await bootstrapStocks();
+      attachRealtime();
+      startAnimationLoop();
+      attachTraderDoc();
+    });
+
+    function showLogin(msg){
+      dashboard.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+      if (msg) loginError.textContent = msg;
+    }
+
+    loginForm.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      loginError.textContent = ""; loginBtn.disabled = true; loginBtn.textContent = "Logging in…";
+      try{
+        await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value.trim());
+      }catch(err){
+        loginError.innerHTML = `<small class="err">${err.message}</small>`;
+      }finally{
+        loginBtn.disabled = false; loginBtn.textContent = "Log in";
+      }
+    });
+
+    logoutBtn.addEventListener("click", async ()=>{
+      await signOut(auth);
+      location.reload();
+    });
+
+    /***** Stocks *****/
+    async function bootstrapStocks(){
+      // If none exist, let admins seed; traders just read what exists.
+      const col = collection(db,"artifacts",APP_ID,"public","data","stocks");
+      const snap = await getDocs(col);
+      if (snap.empty && myRole==="admin"){
+        for(const name of SEED_STOCKS){
+          const id = name.toLowerCase().replace(/[^a-z0-9]+/g,"_");
+          await setDoc(doc(col,id), { name, baseline: +(100+Math.random()*900).toFixed(2), baselineVer: Date.now() });
         }
-        currentRole = roleSnap.data().role;
-
-        document.getElementById("loginSection").classList.add("hidden");
-        document.getElementById("dashboard").classList.remove("hidden");
-        document.getElementById("roleHeader").innerText = `Welcome, ${currentRole}`;
-        if (currentRole === "trader") document.getElementById("traderStats").style.display = "flex";
-
-        loadStocks();
-      } catch (err) {
-        alert("Login failed: " + err.message);
       }
     }
 
-    async function loadStocks() {
-      const stocksRef = collection(db, "artifacts", APP_ID, "public", "data", "stocks");
-      const snap = await getDocs(stocksRef);
-      if (snap.empty) {
-        // Seed 25 stocks with baseline
-        for (let name of STOCK_NAMES) {
-          const stockId = name.replace(/\s+/g, "_").toLowerCase();
-          await setDoc(doc(stocksRef, stockId), { name, baseline: 500 + Math.random()*500, baselineVer: Date.now() });
-        }
-      }
-      const newSnap = await getDocs(stocksRef);
-      newSnap.forEach(d => stocks[d.id] = d.data());
-      renderStockList();
-      startTicker();
-    }
-
-    function renderStockList() {
-      const listDiv = document.getElementById("stockList");
-      listDiv.innerHTML = "";
-      Object.entries(stocks).forEach(([id, s]) => {
-        const card = document.createElement("div");
-        card.className = "stock-card";
-        card.innerHTML = `<strong>${s.name}</strong><br>₹<span id="price-${id}"></span>`;
-        card.onclick = () => openStock(id);
-        listDiv.appendChild(card);
+    function attachRealtime(){
+      const col = collection(db,"artifacts",APP_ID,"public","data","stocks");
+      onSnapshot(col, (snap)=>{
+        const map = {};
+        snap.forEach(d => { const data = d.data(); map[d.id] = { id:d.id, name:data.name, baseline:+data.baseline, baselineVer:+(data.baselineVer||0) }; });
+        stocks = map;
+        renderStockTiles();
+        if (selectedId && stocks[selectedId]) detailName.textContent = stocks[selectedId].name;
       });
     }
 
-    function calcPrice(stock, t) {
-      const base = stock.baseline;
-      const seed = Math.sin((t/4000) + stock.baselineVer/10000);
-      const rand = (seed * 10); // ±10
-      return Math.max(1, (base + rand).toFixed(2));
+    function renderStockTiles(){
+      stockList.innerHTML = "";
+      const t = performance.now();
+      Object.values(stocks).forEach(s => {
+        const price = smoothPriceFor(s, t);
+        const tile = document.createElement("button");
+        tile.className = "tile";
+        tile.innerHTML = `<div class="name">${s.name}</div><div class="price">₹ <span id="p-${s.id}">${fmt(price)}</span></div>`;
+        tile.addEventListener("click", ()=>selectStock(s.id));
+        stockList.appendChild(tile);
+      });
     }
 
-    function startTicker() {
-      setInterval(() => {
-        const t = Date.now();
-        for (let [id, s] of Object.entries(stocks)) {
-          const p = calcPrice(s, t);
-          const el = document.getElementById("price-"+id);
-          if (el) el.textContent = p;
-          if (selectedStock===id) updateChart(p);
-        }
-      }, 1000); // smooth refresh, but drift is 4s cycle
-    }
-
-    function openStock(id) {
-      selectedStock = id;
+    function selectStock(id){
+      selectedId = id;
       const s = stocks[id];
-      document.getElementById("stockDetails").classList.remove("hidden");
-      document.getElementById("selectedStockName").innerText = s.name;
-      chartCtx = document.getElementById("priceChart").getContext("2d");
-      chartData = [];
-      if (currentRole==="admin") document.getElementById("adminControls").classList.remove("hidden");
+      detailName.textContent = s.name;
+      series = [];
+      $("tradeMsg").textContent = "";
+      // enable admin adjust only if admin
+      raiseBtn.disabled = lowerBtn.disabled = (myRole!=="admin");
     }
 
-    function updateChart(price) {
-      chartData.push(price);
-      if (chartData.length > 50) chartData.shift();
-      chartCtx.clearRect(0,0,600,200);
-      chartCtx.beginPath();
-      chartCtx.strokeStyle="#8b5cf6";
-      chartCtx.moveTo(0,200-chartData[0]);
-      chartData.forEach((v,i)=>chartCtx.lineTo(i*12,200-(v/10)));
-      chartCtx.stroke();
+    // Admin ±10%
+    raiseBtn.addEventListener("click", ()=> adjustSelected( 0.10));
+    lowerBtn.addEventListener("click", ()=> adjustSelected(-0.10));
+    async function adjustSelected(delta){
+      if(!selectedId || myRole!=="admin") return;
+      const s = stocks[selectedId];
+      const ref = doc(db,"artifacts",APP_ID,"public","data","stocks", selectedId);
+      const newBase = +(s.baseline * (1+delta)).toFixed(2);
+      await updateDoc(ref, { baseline:newBase, baselineVer: Date.now() });
+      // local snapshot will update via onSnapshot
     }
 
-    async function adjustPrice(factor) {
-      if (!selectedStock) return;
-      const s = stocks[selectedStock];
-      const newBase = s.baseline * (1+factor);
-      await updateDoc(doc(db, "artifacts", APP_ID, "public", "data", "stocks", selectedStock), {
-        baseline: newBase, baselineVer: Date.now()
+    // Admin: set ALL traders starting funds
+    applyFundsBtn.addEventListener("click", async()=>{
+      const amt = parseFloat(allFunds.value);
+      fundsMsg.textContent = "";
+      if (isNaN(amt) || amt < 0){ fundsMsg.textContent = "Enter a valid amount."; return; }
+      if (myRole!=="admin"){ fundsMsg.textContent = "Admin only."; return; }
+
+      const rolesCol = collection(db,"artifacts",APP_ID,"public","data","roles");
+      const snap = await getDocs(rolesCol);
+      let count = 0;
+      for (const d of snap.docs){
+        const r = d.data();
+        if (r.role === "trader"){
+          const tRef = doc(db,"artifacts",APP_ID,"public","data","traders", d.id);
+          await setDoc(tRef, { cash:amt, initialCash:amt }, { merge:true });
+          count++;
+        }
+      }
+      fundsMsg.textContent = `Updated ${count} traders.`;
+    });
+
+    /***** Trader Portfolio *****/
+    function attachTraderDoc(){
+      if (!me) return;
+      const ref = doc(db,"artifacts",APP_ID,"public","data","traders", me.uid);
+      // Create a starter doc if not present (when trader buys first time we’ll merge anyway)
+      getDoc(ref).then(s=>{
+        if(!s.exists()){
+          setDoc(ref, { cash: 100000, initialCash: 100000, portfolio:{} }, { merge:true });
+        }
       });
-      s.baseline = newBase;
-      s.baselineVer = Date.now();
     }
 
-    function buyStock(){ alert("Buy not fully implemented in this demo."); }
-    function sellStock(){ alert("Sell not fully implemented in this demo."); }
+    function portfolioAndStats(uid){
+      // reads latest trader doc + computes invested using live prices
+      // In this simplified final, pull on demand when showing numbers.
+      return getDoc(doc(db,"artifacts",APP_ID,"public","data","traders", uid)).then(s=>{
+        const data = s.exists() ? s.data() : { cash:0, initialCash:0, portfolio:{} };
+        const t = performance.now();
+        let invested = 0;
+        for (const [sym, pos] of Object.entries(data.portfolio||{})){
+          const stId = sym; // we store by stock id (slug)
+          const st = stocks[stId];
+          if (!st) continue;
+          invested += (pos.quantity||0) * smoothPriceFor(st, t);
+        }
+        const working = +data.cash || 0;
+        const initial = +data.initialCash || 0;
+        const pl = (working + invested) - initial;
+        const plPct = initial ? (pl/initial*100) : 0;
+        return { working, invested, pl, plPct, data };
+      });
+    }
+
+    async function refreshMetrics(){
+      if (myRole!=="trader" || !me) return;
+      const { working, invested, pl, plPct } = await portfolioAndStats(me.uid);
+      setText(workingCapEl, fmt(working));
+      setText(investedCapEl, fmt(invested));
+      const sign = pl>=0 ? "+" : "";
+      profitLossEl.style.color = pl>=0 ? "var(--good)" : "var(--bad)";
+      profitLossEl.textContent = `${sign}${fmt(pl)} (${fmt(plPct)}%)`;
+    }
+
+    // Buy / Sell
+    buyBtn.addEventListener("click", ()=> trade("buy"));
+    sellBtn.addEventListener("click",()=> trade("sell"));
+
+    async function trade(kind){
+      tradeMsg.textContent = "";
+      if (!me){ tradeMsg.textContent="Please log in."; return; }
+      if (!selectedId){ tradeMsg.textContent="Select a stock first."; return; }
+      const q = Math.max(1, parseInt(qtyEl.value||"1",10));
+      const st = stocks[selectedId];
+      const price = smoothPriceFor(st, performance.now());
+      const ref = doc(db,"artifacts",APP_ID,"public","data","traders", me.uid);
+      const snap = await getDoc(ref);
+      const t = snap.exists()? snap.data(): { cash:100000, initialCash:100000, portfolio:{} };
+      t.cash = +t.cash || 0;
+      t.portfolio = t.portfolio || {};
+      const pos = t.portfolio[selectedId] || { quantity:0 };
+
+      if (kind==="buy"){
+        const cost = q * price;
+        if (t.cash < cost){ tradeMsg.textContent = "Not enough cash."; return; }
+        t.cash -= cost;
+        pos.quantity += q;
+      } else {
+        if (pos.quantity < q){ tradeMsg.textContent = "Not enough shares."; return; }
+        pos.quantity -= q;
+        t.cash += q * price;
+      }
+      if (pos.quantity>0) t.portfolio[selectedId] = pos;
+      else delete t.portfolio[selectedId];
+
+      await setDoc(ref, t, { merge:true });
+      tradeMsg.textContent = kind==="buy" ? `Bought ${q}` : `Sold ${q}`;
+      refreshMetrics();
+    }
+
+    /***** Animation loop (prices & chart) *****/
+    function drawChart(){
+      const w = chartEl.width, h = chartEl.height;
+      chartCtx.clearRect(0,0,w,h);
+      if (!series.length) return;
+
+      // scale
+      let min = Math.min(...series), max = Math.max(...series);
+      if (min === max){ min -= 1; max += 1; }
+      const xStep = Math.max(1, Math.floor(w / Math.max(60, series.length)));
+      // bars
+      for (let i=0; i<series.length; i++){
+        const v = series[i];
+        const norm = (v - min) / (max - min);
+        const barH = Math.max(2, Math.round(norm * (h - 8)));
+        const x = i * xStep;
+        chartCtx.fillStyle = i>0 && v>=series[i-1] ? "#38d39f" : "#ff6b6b";
+        chartCtx.fillRect(x, h - barH, xStep-1, barH);
+      }
+    }
+
+    function startAnimationLoop(){
+      let last = performance.now();
+      function tick(now){
+        const t = now;
+        // Update tile prices (throttled ~10fps)
+        if (now - last > 100){
+          last = now;
+          Object.values(stocks).forEach(s=>{
+            const p = smoothPriceFor(s, t);
+            const el = document.getElementById(`p-${s.id}`);
+            if (el) el.textContent = fmt(p);
+          });
+          if (selectedId && stocks[selectedId]){
+            const p = smoothPriceFor(stocks[selectedId], t);
+            detailPrice.textContent = `₹ ${fmt(p)}`;
+            // sample into series every ~200ms
+            if (now - lastSampleTime > 200){
+              lastSampleTime = now;
+              series.push(p);
+              if (series.length > 120) series.shift();
+              drawChart();
+            }
+          }
+          // refresh metrics periodically
+          if (myRole==="trader") refreshMetrics();
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    /***** Wire up login early *****/
+    // (Handled above via onAuthStateChanged + form submit)
   </script>
 </body>
 </html>
+
